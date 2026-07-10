@@ -1,0 +1,35 @@
+name: Build index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "themes/**"
+      - "scripts/**"
+  schedule:
+    # Daily: refresh vote/download counts baked into index.json.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/validate.mjs
+      - run: node scripts/build-index.mjs
+        env:
+          WORKER_URL: ${{ vars.WORKER_URL }}
+      - name: Commit index.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.json
+          git diff --cached --quiet || git commit -m "Rebuild index.json"
+          git push

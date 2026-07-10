@@ -1,0 +1,15 @@
+name = "colorblendr-themes"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "colorblendr-themes"
+# Paste the id printed by: wrangler d1 create colorblendr-themes
+database_id = "REPLACE_ME"
+
+[vars]
+GITHUB_REPO = "Mahmud0808/ColorBlendr-Themes"
+# Secrets (set via `wrangler secret put NAME`):
+#   GITHUB_TOKEN     - fine-grained PAT for GITHUB_REPO (contents + pull requests: write)
+#   TURNSTILE_SECRET - Cloudflare Turnstile secret key

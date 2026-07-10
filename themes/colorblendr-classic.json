@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "colorblendr-classic",
+  "name": "ColorBlendr Classic",
+  "description": "The signature ColorBlendr blue.",
+  "author": "DrDisagree",
+  "style": "TONAL_SPOT",
+  "seedColor": "#4A9DD4",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1783987200
+}
