@@ -33,3 +33,6 @@ jobs:
           git add index.json
           git diff --cached --quiet || git commit -m "Rebuild index.json"
           git push
+      - name: Purge jsDelivr cache
+        run: |
+          curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/index.json" || true
