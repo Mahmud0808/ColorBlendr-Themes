@@ -34,5 +34,20 @@ jobs:
           git diff --cached --quiet || git commit -m "Rebuild index.json"
           git push
       - name: Purge jsDelivr cache
+        # GitHub's raw endpoint caches ~5 minutes; purging too early makes
+        # jsDelivr re-cache stale content. Wait it out, then purge until the
+        # CDN matches the freshly built index.
         run: |
-          curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/index.json" || true
+          expected=$(sha256sum index.json | cut -d' ' -f1)
+          for attempt in 1 2 3 4 5 6; do
+            sleep 75
+            curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/index.json" > /dev/null || true
+            sleep 10
+            actual=$(curl -fsSL "https://cdn.jsdelivr.net/gh/${{ github.repository }}@main/index.json" | sha256sum | cut -d' ' -f1)
+            if [ "$actual" = "$expected" ]; then
+              echo "CDN fresh after $attempt attempt(s)"
+              exit 0
+            fi
+          done
+          echo "CDN still stale after retries" >&2
+          exit 1
