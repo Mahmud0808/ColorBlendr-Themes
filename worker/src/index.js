@@ -109,7 +109,7 @@ function validatePayload(p) {
 
     const name = clean(p.name, 40);
     if (!name) return null;
-    const description = clean(p.description ?? "", 200);
+    const description = cleanMultiline(p.description ?? "", 500);
     const author = clean(p.author ?? "", 40);
 
     if (!MONET_STYLES.includes(p.style)) return null;
@@ -144,6 +144,14 @@ function validatePayload(p) {
 function clean(value, max) {
     if (typeof value !== "string") return null;
     return value.replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, max);
+}
+
+function cleanMultiline(value, max) {
+    if (typeof value !== "string") return null;
+    return value.replace(/\r\n/g, "\n")
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim().slice(0, max);
 }
 
 function slugify(name) {
