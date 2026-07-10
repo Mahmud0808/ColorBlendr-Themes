@@ -16,17 +16,9 @@ async function fetchJson(url) {
     }
 }
 
-const votes = workerUrl ? (await fetchJson(`${workerUrl}/counts`)) ?? {} : {};
-
-// jsDelivr publishes per-file hit stats for the last month.
-const stats = (await fetchJson(
-    `https://data.jsdelivr.com/v1/stats/packages/gh/${GITHUB_REPO}/files?period=year`
-)) ?? [];
-const downloads = {};
-for (const entry of stats) {
-    const match = /^\/themes\/(.+)\.json$/.exec(entry.name ?? "");
-    if (match) downloads[match[1]] = entry.hits?.total ?? 0;
-}
+const counts = workerUrl ? (await fetchJson(`${workerUrl}/counts`)) ?? {} : {};
+const votes = counts.upvotes ?? {};
+const downloads = counts.downloads ?? {};
 
 const index = [];
 for (const file of readdirSync("themes").filter((f) => f.endsWith(".json"))) {

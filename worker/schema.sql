@@ -14,3 +14,11 @@ CREATE TABLE IF NOT EXISTS uploads (
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploads_ip ON uploads (ip, created);
+
+-- One "download" per device per theme, recorded when a theme is applied.
+CREATE TABLE IF NOT EXISTS applies (
+    theme_id TEXT NOT NULL,
+    device TEXT NOT NULL,
+    created INTEGER NOT NULL,
+    PRIMARY KEY (theme_id, device)
+);

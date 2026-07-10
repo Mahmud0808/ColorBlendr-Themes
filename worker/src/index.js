@@ -1,9 +1,10 @@
 // ColorBlendr community themes worker.
 // Endpoints:
-//   POST /vote    { themeId, device }            -> { voted, upvotes }
+//   POST /vote     { themeId, device }           -> { voted, upvotes }
+//   POST /download { themeId, device }           -> { downloads }
 //   GET  /votes?device=<hash>                    -> { themeIds: [...] }
-//   GET  /counts                                 -> { <themeId>: <votes> }   (used by CI cron)
-//   POST /upload  { payload, turnstileToken }    -> { prUrl }
+//   GET  /counts                                 -> { upvotes: {id: n}, downloads: {id: n} }
+//   POST /upload   { payload, turnstileToken }   -> { prUrl }
 //
 // Secrets: GITHUB_TOKEN, TURNSTILE_SECRET. Vars: GITHUB_REPO.
 
@@ -32,6 +33,9 @@ export default {
             }
             if (request.method === "GET" && url.pathname === "/votes") {
                 return await votesForDevice(url, env);
+            }
+            if (request.method === "POST" && url.pathname === "/download") {
+                return await download(request, env);
             }
             if (request.method === "GET" && url.pathname === "/counts") {
                 return await counts(env);
@@ -92,13 +96,37 @@ async function votesForDevice(url, env) {
     return json({ themeIds: (rows.results ?? []).map((r) => r.theme_id) });
 }
 
+// One download per device per theme; re-applying the same theme is free.
+async function download(request, env) {
+    const body = await request.json().catch(() => null);
+    const themeId = body?.themeId;
+    const device = body?.device;
+    if (!ID_REGEX.test(themeId ?? "") || !DEVICE_REGEX.test(device ?? "")) {
+        return json({ error: "bad request" }, 400);
+    }
+
+    await env.DB.prepare(
+        "INSERT OR IGNORE INTO applies (theme_id, device, created) VALUES (?, ?, ?)")
+        .bind(themeId, device, Date.now()).run();
+
+    const count = await env.DB
+        .prepare("SELECT COUNT(*) AS c FROM applies WHERE theme_id = ?")
+        .bind(themeId).first();
+
+    return json({ downloads: count?.c ?? 0 });
+}
+
 async function counts(env) {
-    const rows = await env.DB
+    const votes = await env.DB
         .prepare("SELECT theme_id, COUNT(*) AS c FROM votes GROUP BY theme_id")
         .all();
+    const downloads = await env.DB
+        .prepare("SELECT theme_id, COUNT(*) AS c FROM applies GROUP BY theme_id")
+        .all();
 
-    const out = {};
-    for (const row of rows.results ?? []) out[row.theme_id] = row.c;
+    const out = { upvotes: {}, downloads: {} };
+    for (const row of votes.results ?? []) out.upvotes[row.theme_id] = row.c;
+    for (const row of downloads.results ?? []) out.downloads[row.theme_id] = row.c;
     return json(out);
 }
 
