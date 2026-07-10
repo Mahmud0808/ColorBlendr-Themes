@@ -1,0 +1,16 @@
+{
+  "id": "emerald-twilight-j86r8n",
+  "schemaVersion": 1,
+  "name": "Emerald Twilight",
+  "description": "A refined dark theme inspired by the calm beauty of emerald forests at dusk. Rich greens and cool teal accents create a balanced atmosphere, while soft neutral shades keep the interface elegant, modern, and easy on the eyes.",
+  "author": "DrDisagree",
+  "style": "VIBRANT",
+  "seedColor": "#7FF9C7",
+  "accentSaturation": 140,
+  "backgroundSaturation": 40,
+  "backgroundLightness": 25,
+  "accurateShades": true,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1783703748
+}
