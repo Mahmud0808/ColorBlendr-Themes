@@ -39,21 +39,35 @@ jobs:
         # CDN matches the freshly built index.
         run: |
           expected=$(sha256sum index.json | cut -d' ' -f1)
-          for attempt in 1 2 3; do
-            sleep 75
-            response=$(curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/index.json" || true)
+
+          # Purging while GitHub's raw endpoint (jsDelivr's upstream) still
+          # serves stale content would re-cache the old index for 12h. Wait
+          # until raw is fresh — usually seconds, up to its ~5 min cache TTL.
+          for i in $(seq 1 30); do
+            raw=$(curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/main/index.json" | sha256sum | cut -d' ' -f1)
+            [ "$raw" = "$expected" ] && break
+            sleep 10
+          done
+          if [ "$raw" != "$expected" ]; then
+            echo "::warning::Raw endpoint still stale; skipping purge (next run catches up)"
+            exit 0
+          fi
+
+          # Purge exactly once — edges can take a minute to drop the old copy,
+          # and re-purging only burns the hourly throttle quota.
+          response=$(curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/index.json" || true)
+          if echo "$response" | grep -q '"throttled": *true'; then
+            echo "::warning::Purge throttled; CDN refreshes when the throttle resets"
+            exit 0
+          fi
+
+          for i in $(seq 1 12); do
             sleep 10
             actual=$(curl -fsSL "https://cdn.jsdelivr.net/gh/${{ github.repository }}@main/index.json" | sha256sum | cut -d' ' -f1)
             if [ "$actual" = "$expected" ]; then
-              echo "CDN fresh after $attempt attempt(s)"
-              exit 0
-            fi
-            # Purge API allows only a few purges per file per hour; once
-            # throttled, retrying is pointless — the next run catches up.
-            if echo "$response" | grep -q '"throttled": *true'; then
-              echo "::warning::Purge throttled; CDN refreshes when the throttle resets"
+              echo "CDN fresh after $((i * 10))s"
               exit 0
             fi
           done
-          echo "::warning::CDN still stale after retries; will catch up on next run"
+          echo "::warning::CDN not confirmed fresh within 2 min; edges usually catch up shortly"
           exit 0
