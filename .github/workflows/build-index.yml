@@ -27,16 +27,22 @@ jobs:
         env:
           WORKER_URL: ${{ vars.WORKER_URL }}
       - name: Commit index.json
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.json
-          git diff --cached --quiet || git commit -m "Rebuild index.json"
-          git push
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Rebuild index.json"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Purge jsDelivr cache
-        # GitHub's raw endpoint caches ~5 minutes; purging too early makes
-        # jsDelivr re-cache stale content. Wait it out, then purge until the
-        # CDN matches the freshly built index.
+        # Runs only when the index changed — every hit on the purge API costs
+        # quota (a few per file per hour), even "just checking".
+        if: steps.commit.outputs.changed == 'true'
         run: |
           expected=$(sha256sum index.json | cut -d' ' -f1)
 
@@ -56,6 +62,7 @@ jobs:
           # Purge exactly once — edges can take a minute to drop the old copy,
           # and re-purging only burns the hourly throttle quota.
           response=$(curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/index.json" || true)
+          echo "$response"
           if echo "$response" | grep -q '"throttled": *true'; then
             echo "::warning::Purge throttled; CDN refreshes when the throttle resets"
             exit 0
