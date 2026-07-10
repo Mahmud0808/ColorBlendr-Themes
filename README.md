@@ -24,7 +24,7 @@ Every submission is human-reviewed before merge.
 
 ### 2. Cloudflare Worker (free tier)
 
-1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com) — email + password, no card.
+1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com) — email + password.
 2. Install and log in to the CLI (needs Node.js):
    ```
    npm install -g wrangler

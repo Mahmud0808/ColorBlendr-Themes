@@ -6,7 +6,7 @@ compatibility_date = "2026-07-01"
 binding = "DB"
 database_name = "colorblendr-themes"
 # Paste the id printed by: wrangler d1 create colorblendr-themes
-database_id = "REPLACE_ME"
+database_id = "36fb7203-8426-4fa8-a4c0-053bad92a37e"
 
 [vars]
 GITHUB_REPO = "Mahmud0808/ColorBlendr-Themes"

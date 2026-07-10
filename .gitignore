@@ -1,0 +1,15 @@
+# Node
+node_modules/
+
+# Wrangler local state and local secrets
+.wrangler/
+.dev.vars
+worker/.wrangler/
+worker/.dev.vars
+
+# Editors / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
