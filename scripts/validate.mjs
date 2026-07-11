@@ -47,7 +47,8 @@ for (const file of readdirSync("themes").filter((f) => f.endsWith(".json"))) {
 
     check(path, typeof theme.name === "string" && theme.name.trim().length > 0
         && theme.name.length <= 40, "name must be 1-40 chars");
-    check(path, (theme.description ?? "").length <= 500, "description too long");
+    check(path, typeof theme.description === "string" && theme.description.trim().length > 0
+        && theme.description.length <= 500, "description must be 1-500 chars");
     check(path, (theme.author ?? "").length <= 40, "author too long");
     check(path, MONET_STYLES.includes(theme.style), "unknown style");
     check(path, HEX_COLOR.test(theme.seedColor ?? ""), "invalid seedColor");

@@ -138,6 +138,7 @@ function validatePayload(p) {
     const name = clean(p.name, 40);
     if (!name) return null;
     const description = cleanMultiline(p.description ?? "", 500);
+    if (!description) return null;
     const author = clean(p.author ?? "", 40);
 
     if (!MONET_STYLES.includes(p.style)) return null;
