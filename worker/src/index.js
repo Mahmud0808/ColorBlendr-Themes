@@ -145,13 +145,16 @@ function validatePayload(p) {
     for (const key of ["secondaryColor", "tertiaryColor"]) {
         if (p[key] != null && !HEX_COLOR.test(p[key])) return null;
     }
-    for (const key of ["accentSaturation", "backgroundSaturation", "backgroundLightness"]) {
+    for (const key of ["accentSaturation", "backgroundSaturation", "backgroundLightness",
+        "accentSaturationLight", "backgroundSaturationLight", "backgroundLightnessLight"]) {
         const v = p[key] ?? 100;
         if (!Number.isInteger(v) || v < 0 || v > 200) return null;
     }
-    for (const key of ["accurateShades", "pitchBlack", "tintText"]) {
+    for (const key of ["accurateShades", "pitchBlack", "tintText", "modeSpecificThemes"]) {
         if (p[key] != null && typeof p[key] !== "boolean") return null;
     }
+    const spec = p.colorSpecVersion ?? 0;
+    if (!Number.isInteger(spec) || spec < 0 || spec > 2) return null;
     const overrides = p.colorOverrides ?? {};
     if (typeof overrides !== "object" || Array.isArray(overrides)) return null;
     for (const [shade, color] of Object.entries(overrides)) {
@@ -161,7 +164,9 @@ function validatePayload(p) {
     const allowed = ["schemaVersion", "name", "description", "author", "style",
         "seedColor", "secondaryColor", "tertiaryColor", "accentSaturation",
         "backgroundSaturation", "backgroundLightness", "accurateShades",
-        "pitchBlack", "tintText", "colorOverrides"];
+        "pitchBlack", "tintText", "colorSpecVersion", "modeSpecificThemes",
+        "accentSaturationLight", "backgroundSaturationLight",
+        "backgroundLightnessLight", "colorOverrides"];
     for (const key of Object.keys(p)) {
         if (!allowed.includes(key)) return null;
     }

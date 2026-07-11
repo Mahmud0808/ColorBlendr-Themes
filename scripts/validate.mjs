@@ -16,7 +16,9 @@ const VALID_SHADES = new Set(
 const ALLOWED_KEYS = new Set(["schemaVersion", "id", "name", "description",
     "author", "style", "seedColor", "secondaryColor", "tertiaryColor",
     "accentSaturation", "backgroundSaturation", "backgroundLightness",
-    "accurateShades", "pitchBlack", "tintText", "colorOverrides", "createdAt"]);
+    "accurateShades", "pitchBlack", "tintText", "colorSpecVersion",
+    "modeSpecificThemes", "accentSaturationLight", "backgroundSaturationLight",
+    "backgroundLightnessLight", "colorOverrides", "createdAt"]);
 
 const errors = [];
 const seenIds = new Set();
@@ -49,11 +51,14 @@ for (const file of readdirSync("themes").filter((f) => f.endsWith(".json"))) {
     check(path, (theme.author ?? "").length <= 40, "author too long");
     check(path, MONET_STYLES.includes(theme.style), "unknown style");
     check(path, HEX_COLOR.test(theme.seedColor ?? ""), "invalid seedColor");
+    const spec = theme.colorSpecVersion ?? 0;
+    check(path, Number.isInteger(spec) && spec >= 0 && spec <= 2, "invalid colorSpecVersion");
 
     for (const key of ["secondaryColor", "tertiaryColor"]) {
         check(path, theme[key] == null || HEX_COLOR.test(theme[key]), `invalid ${key}`);
     }
-    for (const key of ["accentSaturation", "backgroundSaturation", "backgroundLightness"]) {
+    for (const key of ["accentSaturation", "backgroundSaturation", "backgroundLightness",
+        "accentSaturationLight", "backgroundSaturationLight", "backgroundLightnessLight"]) {
         const v = theme[key] ?? 100;
         check(path, Number.isInteger(v) && v >= 0 && v <= 200, `${key} out of range`);
     }

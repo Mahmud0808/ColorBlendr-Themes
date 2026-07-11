@@ -12,5 +12,6 @@
   "accurateShades": true,
   "pitchBlack": false,
   "tintText": true,
-  "createdAt": 1783703748
+  "createdAt": 1783703748,
+  "colorSpecVersion": 2
 }
