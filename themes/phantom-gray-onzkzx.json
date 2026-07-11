@@ -1,0 +1,17 @@
+{
+  "id": "phantom-gray-onzkzx",
+  "schemaVersion": 1,
+  "name": "Phantom Gray",
+  "description": "",
+  "author": "Joker",
+  "style": "MONOCHROMATIC",
+  "seedColor": "#211C23",
+  "accentSaturation": 140,
+  "backgroundSaturation": 40,
+  "backgroundLightness": 25,
+  "accurateShades": false,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1783750145
+}
