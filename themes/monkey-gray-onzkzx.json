@@ -1,0 +1,17 @@
+{
+  "id": "monkey-gray-onzkzx",
+  "schemaVersion": 1,
+  "name": "Monkey Gray",
+  "description": "",
+  "author": "Monkey",
+  "style": "MONOCHROMATIC",
+  "seedColor": "#211C23",
+  "accentSaturation": 140,
+  "backgroundSaturation": 40,
+  "backgroundLightness": 25,
+  "accurateShades": false,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1783750145
+}
