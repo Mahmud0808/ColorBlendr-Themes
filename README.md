@@ -19,12 +19,11 @@ Every submission is human-reviewed before merge.
 
 ### 1. This repository
 
-1. Create the GitHub repository `ColorBlendr-Themes` and push these files to `main`.
-2. Repo settings → Actions → General → Workflow permissions → **Read and write**.
+- Repo settings → Actions → General → Workflow permissions → **Read and write**.
 
 ### 2. Cloudflare Worker (free tier)
 
-1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com) — email + password.
+1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com).
 2. Install and log in to the CLI (needs Node.js):
    ```
    npm install -g wrangler
