@@ -1,0 +1,27 @@
+{
+  "id": "pastel-twilight-b59nop",
+  "schemaVersion": 1,
+  "name": "Pastel Twilight",
+  "description": "A dreamy pastel palette inspired by Catppuccin's soft and soothing aesthetic, blending lavender skies, muted violet tones, and gentle shadows to create a cozy, serene atmosphere with a touch of elegance.",
+  "author": "DrDisagree",
+  "style": "TONAL_SPOT",
+  "seedColor": "#A6A6FF",
+  "secondaryColor": "#C9A6F4",
+  "accentSaturation": 115,
+  "backgroundSaturation": 115,
+  "backgroundLightness": 95,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 115,
+  "backgroundSaturationLight": 115,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 1,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_200": "#B8B7E2",
+    "system_accent2_100": "#EFD7FF",
+    "system_accent2_700": "#9B73CF"
+  },
+  "createdAt": 1784045228
+}
