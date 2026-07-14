@@ -1,9 +1,9 @@
 {
   "id": "jcolor-pqpw95",
   "schemaVersion": 1,
-  "name": "jcolor",
-  "description": "blue and black",
-  "author": "jossi",
+  "name": "jColor",
+  "description": "A refined blue and black theme featuring icy cyan highlights, deep shadows, and a futuristic dark aesthetic.",
+  "author": "Jossi",
   "style": "SPRITZ",
   "seedColor": "#51BDFF",
   "secondaryColor": "#29ACFF",
