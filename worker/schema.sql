@@ -22,3 +22,11 @@ CREATE TABLE IF NOT EXISTS applies (
     created INTEGER NOT NULL,
     PRIMARY KEY (theme_id, device)
 );
+
+-- One report per device per theme; first report opens a GitHub issue.
+CREATE TABLE IF NOT EXISTS reports (
+    theme_id TEXT NOT NULL,
+    device TEXT NOT NULL,
+    created INTEGER NOT NULL,
+    PRIMARY KEY (theme_id, device)
+);

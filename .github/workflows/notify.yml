@@ -1,19 +1,24 @@
 name: Notify owner
 
-# PRs are opened with the owner's own token, and GitHub never notifies you
-# about your own activity. A bot comment that @mentions the owner does.
+# PRs and issues are opened with the owner's own token, and GitHub never
+# notifies you about your own activity. A bot comment that @mentions the
+# owner does.
 on:
   pull_request:
+    types: [opened]
+  issues:
     types: [opened]
 
 permissions:
   pull-requests: write
+  issues: write
 
 jobs:
   mention:
     runs-on: ubuntu-latest
     steps:
-      - name: Mention owner on the new submission
+      - name: Mention owner on new submission
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
@@ -21,3 +26,13 @@ jobs:
         run: |
           gh pr comment "$PR" --repo "$REPO" \
             --body "@Mahmud0808 New theme submission awaiting review."
+
+      - name: Mention owner on new report
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue comment "$ISSUE" --repo "$REPO" \
+            --body "@Mahmud0808 A theme was reported; please review."

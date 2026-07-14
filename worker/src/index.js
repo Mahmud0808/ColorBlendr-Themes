@@ -5,6 +5,7 @@
 //   GET  /votes?device=<hash>                    -> { themeIds: [...] }
 //   GET  /counts                                 -> { upvotes: {id: n}, downloads: {id: n} }
 //   POST /upload   { payload, turnstileToken }   -> { prUrl }
+//   POST /report   { themeId, device }           -> { reported }
 //   GET  /theme/<id>                             -> share landing page (HTML)
 //
 // Secrets: GITHUB_TOKEN, TURNSTILE_SECRET. Vars: GITHUB_REPO.
@@ -44,6 +45,9 @@ export default {
             if (request.method === "POST" && url.pathname === "/upload") {
                 return await upload(request, env);
             }
+            if (request.method === "POST" && url.pathname === "/report") {
+                return await report(request, env);
+            }
             if (request.method === "GET" && url.pathname.startsWith("/theme/")) {
                 return await themePage(url, env);
             }
@@ -53,6 +57,60 @@ export default {
         }
     }
 };
+
+// One report per device per theme. First report on a theme opens a GitHub
+// issue (the notify workflow mentions the owner); later ones just count.
+async function report(request, env) {
+    const body = await request.json().catch(() => null);
+    const themeId = body?.themeId;
+    const device = body?.device;
+    if (!ID_REGEX.test(themeId ?? "") || !DEVICE_REGEX.test(device ?? "")) {
+        return json({ error: "bad request" }, 400);
+    }
+
+    const existing = await env.DB
+        .prepare("SELECT 1 FROM reports WHERE theme_id = ? AND device = ?")
+        .bind(themeId, device).first();
+    if (existing) return json({ reported: true });
+
+    await env.DB
+        .prepare("INSERT INTO reports (theme_id, device, created) VALUES (?, ?, ?)")
+        .bind(themeId, device, Date.now()).run();
+
+    const count = await env.DB
+        .prepare("SELECT COUNT(*) AS c FROM reports WHERE theme_id = ?")
+        .bind(themeId).first();
+    if ((count?.c ?? 0) === 1) {
+        // Best-effort; the report is recorded either way.
+        try {
+            await openReportIssue(env, themeId);
+        } catch {
+        }
+    }
+
+    return json({ reported: true });
+}
+
+async function openReportIssue(env, themeId) {
+    await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/issues`, {
+        method: "POST",
+        headers: {
+            authorization: `Bearer ${env.GITHUB_TOKEN}`,
+            accept: "application/vnd.github+json",
+            "user-agent": "colorblendr-themes-worker"
+        },
+        body: JSON.stringify({
+            title: `Report: ${themeId}`,
+            body: [
+                `A user reported the theme \`${themeId}\`.`,
+                "",
+                `File: https://github.com/${env.GITHUB_REPO}/blob/main/themes/${themeId}.json`,
+                "",
+                "Review the content; delete the file and close this issue if it violates the rules."
+            ].join("\n")
+        })
+    });
+}
 
 // Share landing page: theme summary + "open in app" deep link. The custom
 // scheme only resolves if the app is installed; page explains the fallback.
