@@ -251,9 +251,12 @@ async function themePage(url, env) {
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="${dark.colors.bg}">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="${lightMode.colors.bg}">
 <link rel="icon" type="image/svg+xml" href="${favicon}">
+<meta name="description" content="${esc(theme.description)}">
+<link rel="canonical" href="${esc(url.origin)}/theme/${esc(id)}">
 <meta property="og:title" content="${esc(theme.name)} - ColorBlendr">
 <meta property="og:description" content="${esc(theme.description)}">
 <meta property="og:type" content="website">
+<meta property="og:url" content="${esc(url.origin)}/theme/${esc(id)}">
 <title>${esc(theme.name)} - ColorBlendr</title>
 <style>
   :root { ${cssVars(dark.colors)} }
