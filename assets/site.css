@@ -111,6 +111,57 @@ a.tcard:hover .tswatch { transform: scale(1.06) rotate(-3deg); }
 .toolbar input:focus, .toolbar select:focus { box-shadow: 0 0 0 2px var(--accent) inset; }
 .toolbar input { flex: 1; min-width: 200px; }
 .toolbar input::placeholder { color: var(--subtle); }
+.searchwrap { flex: 1; min-width: 200px; position: relative; display: flex; }
+.searchwrap input[type="search"] { flex: 1; padding-right: 52px; }
+.colorbtn {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: none; border: none; cursor: pointer; color: var(--subtle);
+  transition: background-color .15s ease, color var(--recolor, 1.6s) ease;
+}
+.colorbtn:hover { background: var(--card-highest); }
+.colorbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Themed hue popover; native color dialog can't be styled. */
+.colorpop { width: 270px; padding: 16px; }
+.hueprev { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--text); transition: color var(--recolor, 1.6s) ease; }
+#huePrevDot {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  background: var(--card-highest); border: 2px solid var(--outline-v);
+}
+.huewrap {
+  position: relative; width: 180px; height: 180px;
+  margin: 18px auto 12px; touch-action: none; cursor: pointer;
+}
+#hueWheel {
+  width: 100%; height: 100%; border-radius: 50%;
+  background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  -webkit-mask: radial-gradient(circle, transparent 61px, #000 62px);
+  mask: radial-gradient(circle, transparent 61px, #000 62px);
+}
+#hueWheel:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+#hueThumb {
+  position: absolute; width: 26px; height: 26px; border-radius: 50%;
+  border: 4px solid var(--bg); box-shadow: 0 1px 5px rgba(0,0,0,.45);
+  background: var(--text); pointer-events: none;
+  transform: translate(-50%, -50%); left: 50%; top: 8%;
+}
+.neutralbtn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 12px 14px; margin-top: 6px;
+  background: var(--tonal); color: var(--on-tonal);
+  border: none; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 13.5px; font-weight: 600;
+  transition: filter .15s ease, transform .12s ease,
+              background-color var(--recolor, 1.6s) ease, color var(--recolor, 1.6s) ease;
+}
+.neutralbtn:hover { filter: brightness(1.08); }
+.neutralbtn:active { transform: scale(.97); }
+.neutralbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.neutraldots { display: inline-flex; }
+.neutraldots span { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--bg); }
+.neutraldots span + span { margin-left: -5px; }
 .toolbar select option { background: var(--card-high); }
 
 .menuwrap { position: relative; }
@@ -324,3 +375,4 @@ input[type="search"]::-webkit-search-cancel-button:hover { background: var(--tex
 @keyframes sk-sweep { to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .sk-card::after { animation: none; } }
 .themes-grid .sk-card { width: auto; flex: none; }
+.themes-grid .loading { grid-column: 1 / -1; }

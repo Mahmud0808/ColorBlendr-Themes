@@ -26,7 +26,23 @@
   </header>
 
   <div class="toolbar">
-    <input id="search" type="search" placeholder="Search by name or author" autocomplete="off">
+    <div class="searchwrap">
+      <input id="search" type="search" placeholder="Search by name, author, or #hex color" autocomplete="off">
+      <button id="searchColorBtn" class="colorbtn" aria-label="Search by color" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M20.71 5.63l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z"/></svg>
+      </button>
+      <div id="colorPop" class="menu colorpop" hidden>
+        <div class="hueprev"><span id="huePrevDot"></span><span id="huePrevHex">Pick a hue</span></div>
+        <div class="huewrap">
+          <div id="hueWheel" role="slider" aria-label="Hue" aria-valuemin="0" aria-valuemax="359" aria-valuenow="205" tabindex="0"></div>
+          <div id="hueThumb"></div>
+        </div>
+        <button id="hueNeutral" class="neutralbtn">
+          <span class="neutraldots" aria-hidden="true"><span style="background:#e8e8e8"></span><span style="background:#808080"></span><span style="background:#161616"></span></span>
+          Neutrals
+        </button>
+      </div>
+    </div>
     <div class="menuwrap">
       <button id="sortBtn" class="sortbtn" aria-haspopup="listbox" aria-expanded="false">
         <span id="sortLabel">Trending</span>

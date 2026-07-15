@@ -74,6 +74,28 @@ function shiftLightness(hex, lightness, minTone = 0, maxTone = 100) {
 	return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
 }
 
+// ---- Color search -----------------------------------------------------------
+
+// Same family = hue within a window; wider would cross into other colors.
+const HUE_WINDOW = 30;
+// Below this chroma hue is meaningless; treat as neutral (gray/black/white).
+const NEUTRAL_CHROMA = 12;
+
+function parseColorQuery(query) {
+	const m = query.match(/^#?([0-9a-f]{6})$/i);
+	return m ? "#" + m[1] : null;
+}
+
+function seedMatchesColor(seedHex, queryHex) {
+	if (!HEX.test(seedHex ?? "")) return false;
+	const seed = Hct.fromInt(argbFromHex(seedHex));
+	const target = Hct.fromInt(argbFromHex(queryHex));
+	if (target.chroma < NEUTRAL_CHROMA) return seed.chroma < NEUTRAL_CHROMA;
+	if (seed.chroma < NEUTRAL_CHROMA) return false;
+	const d = Math.abs(seed.hue - target.hue);
+	return Math.min(d, 360 - d) <= HUE_WINDOW;
+}
+
 // ---- Site-wide dynamic coloring -------------------------------------------
 
 function applySiteSeed(seedHex, style, spec, sliders) {
@@ -454,12 +476,15 @@ export async function initAllThemes() {
 	let sortValue = "trending";
 	const render = () => {
 		const query = search.value.trim().toLowerCase();
+		const colorQuery = parseColorQuery(query);
 		const list = themes
 			.filter(
 				(t) =>
 					!query ||
-					(t.name ?? "").toLowerCase().includes(query) ||
-					(t.author ?? "").toLowerCase().includes(query),
+					(colorQuery !== null
+						? seedMatchesColor(t.seedColor, colorQuery)
+						: (t.name ?? "").toLowerCase().includes(query) ||
+							(t.author ?? "").toLowerCase().includes(query)),
 			)
 			.sort(SORTS[sortValue] ?? SORTS.trending);
 		document.getElementById("grid").innerHTML = list.length
@@ -467,6 +492,88 @@ export async function initAllThemes() {
 			: '<div class="loading">No themes match.</div>';
 	};
 	search.addEventListener("input", render);
+
+	// Themed hue wheel popover fills the search box with a hex; render()
+	// detects it. Native color dialog can't be styled.
+	const colorBtn = document.getElementById("searchColorBtn");
+	const colorPop = document.getElementById("colorPop");
+	const hueWrap = colorPop?.querySelector(".huewrap");
+	const hueWheel = document.getElementById("hueWheel");
+	const hueThumb = document.getElementById("hueThumb");
+	const huePrevDot = document.getElementById("huePrevDot");
+	const huePrevHex = document.getElementById("huePrevHex");
+	const hueNeutral = document.getElementById("hueNeutral");
+	if (colorBtn && colorPop) {
+		let hue = 205;
+		// HSL hue -> hex so the thumb position matches the wheel color.
+		const hueToHex = (h) => {
+			const f = (n) => {
+				const k = (n + h / 30) % 12;
+				const c = 0.525 - 0.425 * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+				return Math.round(c * 255).toString(16).padStart(2, "0");
+			};
+			return ("#" + f(0) + f(8) + f(4)).toUpperCase();
+		};
+		const positionThumb = () => {
+			// Ring midline; hue 0 at 12 o'clock, clockwise like the gradient.
+			const rad = (hue * Math.PI) / 180;
+			const r = 42; // % of wrap size
+			hueThumb.style.left = 50 + r * Math.sin(rad) + "%";
+			hueThumb.style.top = 50 - r * Math.cos(rad) + "%";
+			hueThumb.style.background = hueToHex(hue);
+			hueWheel.setAttribute("aria-valuenow", String(Math.round(hue)));
+		};
+		const applyHue = () => {
+			positionThumb();
+			const hex = hueToHex(hue);
+			huePrevDot.style.background = hex;
+			huePrevHex.textContent = hex;
+			search.value = hex;
+			render();
+		};
+		const setPopOpen = (open) => {
+			colorPop.hidden = !open;
+			colorBtn.setAttribute("aria-expanded", String(open));
+		};
+		const setFromPointer = (e) => {
+			const rect = hueWrap.getBoundingClientRect();
+			const dx = e.clientX - (rect.left + rect.width / 2);
+			const dy = e.clientY - (rect.top + rect.height / 2);
+			hue = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+			applyHue();
+		};
+		hueWrap.addEventListener("pointerdown", (e) => {
+			hueWrap.setPointerCapture(e.pointerId);
+			setFromPointer(e);
+		});
+		hueWrap.addEventListener("pointermove", (e) => {
+			if (e.buttons) setFromPointer(e);
+		});
+		hueWheel.addEventListener("keydown", (e) => {
+			const step = { ArrowRight: 4, ArrowUp: 4, ArrowLeft: -4, ArrowDown: -4 }[e.key];
+			if (!step) return;
+			e.preventDefault();
+			hue = (hue + step + 360) % 360;
+			applyHue();
+		});
+		colorBtn.addEventListener("click", () => setPopOpen(colorPop.hidden));
+		hueNeutral.addEventListener("click", () => {
+			huePrevDot.style.background = "#808080";
+			huePrevHex.textContent = "Neutrals";
+			search.value = "#808080";
+			setPopOpen(false);
+			render();
+		});
+		document.addEventListener("click", (e) => {
+			if (!colorPop.contains(e.target) && !colorBtn.contains(e.target)) {
+				setPopOpen(false);
+			}
+		});
+		document.addEventListener("keydown", (e) => {
+			if (e.key === "Escape") setPopOpen(false);
+		});
+		positionThumb();
+	}
 
 	// Custom sort menu: native select popups ignore theming.
 	const menuwrap = document.querySelector(".menuwrap");
