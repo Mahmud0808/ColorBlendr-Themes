@@ -10,6 +10,36 @@
 //
 // Secrets: GITHUB_TOKEN, TURNSTILE_SECRET. Vars: GITHUB_REPO.
 
+import {
+    Hct,
+    MaterialDynamicColors,
+    SchemeContent,
+    SchemeExpressive,
+    SchemeFidelity,
+    SchemeFruitSalad,
+    SchemeMonochrome,
+    SchemeNeutral,
+    SchemeRainbow,
+    SchemeTonalSpot,
+    SchemeVibrant,
+    argbFromHex,
+    hexFromArgb
+} from "@material/material-color-utilities";
+
+// App MONET style -> MCU scheme; CMF is app-custom -> TonalSpot fallback.
+const SCHEME_BY_STYLE = {
+    MONOCHROMATIC: SchemeMonochrome,
+    TONAL_SPOT: SchemeTonalSpot,
+    VIBRANT: SchemeVibrant,
+    RAINBOW: SchemeRainbow,
+    EXPRESSIVE: SchemeExpressive,
+    FIDELITY: SchemeFidelity,
+    CONTENT: SchemeContent,
+    FRUIT_SALAD: SchemeFruitSalad,
+    SPRITZ: SchemeNeutral,
+    CMF: SchemeTonalSpot
+};
+
 const ID_REGEX = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const DEVICE_REGEX = /^[a-f0-9]{64}$/;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -132,23 +162,67 @@ async function themePage(url, env) {
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
 
-    // Page tinted from the theme's own seed: hue drives every surface.
-    const hsl = hexToHsl(HEX_COLOR.test(theme.seedColor ?? "") ? theme.seedColor : "#6750A4");
-    const tone = (s, l) => `hsl(${hsl.h} ${s}% ${l}%)`;
-    const colors = {
-        bg: tone(30, 7),
-        glow: `hsla(${hsl.h} 80% 70% / 0.16)`,
-        card: tone(22, 11),
-        border: tone(20, 18),
-        text: tone(15, 93),
-        subtle: tone(8, 64),
-        chipBg: tone(18, 16),
-        chipText: tone(12, 80),
-        accent: tone(75, 82),
-        onAccent: tone(45, 14),
-        tonal: tone(16, 20),
-        onTonal: tone(15, 90)
+    // Style -> MCU scheme + theme sliders on top = matches applied look.
+    // Both modes derived; CSS swaps via prefers-color-scheme.
+    const seed = HEX_COLOR.test(theme.seedColor ?? "") ? theme.seedColor : "#4285F4";
+    const SchemeCtor = SCHEME_BY_STYLE[theme.style] ?? SchemeTonalSpot;
+    const alpha = (hex, a) =>
+        hex + Math.round(a * 255).toString(16).padStart(2, "0");
+    const isMono = theme.style === "MONOCHROMATIC";
+
+    const buildPalette = (isDark) => {
+        const scheme = new SchemeCtor(Hct.fromInt(argbFromHex(seed)), isDark, 0);
+        // Mode-specific themes carry light slider variants.
+        const light = !isDark && theme.modeSpecificThemes;
+        const accentSat = isMono ? 100
+            : (light ? theme.accentSaturationLight : theme.accentSaturation) ?? 100;
+        const bgSat = isMono ? 100
+            : (light ? theme.backgroundSaturationLight : theme.backgroundSaturation) ?? 100;
+        const bgLight = isMono ? 100
+            : (light ? theme.backgroundLightnessLight : theme.backgroundLightness) ?? 100;
+
+        const dc = MaterialDynamicColors;
+        const role = (dynamicColor) => hexFromArgb(dynamicColor.getArgb(scheme));
+        const accentRole = (dynamicColor) => adjustSaturation(role(dynamicColor), accentSat);
+        const surfaceRole = (dynamicColor) => shiftLightness(
+            adjustSaturation(role(dynamicColor), bgSat),
+            bgLight
+        );
+
+        const glassBase = role(dc.inverseSurface);
+        return {
+            scheme,
+            accentSat,
+            colors: {
+                bg: surfaceRole(dc.surface),
+                glow: alpha(accentRole(dc.primary), 0.16),
+                text: role(dc.onSurface),
+                subtle: alpha(role(dc.onSurfaceVariant), 0.85),
+                chipText: role(dc.onSurfaceVariant),
+                accent: accentRole(dc.primary),
+                onAccent: role(dc.onPrimary),
+                onTonal: role(dc.onSurface),
+                orb1: alpha(accentRole(dc.primary), 0.32),
+                orb2: alpha(accentRole(dc.tertiary), 0.26),
+                orb3: alpha(accentRole(dc.secondary), 0.18),
+                glassFill: alpha(glassBase, 0.06),
+                glassBorder: alpha(glassBase, 0.14),
+                glassHighlight: alpha(glassBase, 0.10),
+                chipFill: alpha(glassBase, 0.09),
+                chipBorder: alpha(glassBase, 0.10),
+                tonalFill: alpha(glassBase, 0.10),
+                tonalBorder: alpha(glassBase, 0.12),
+                dotRing: alpha(role(dc.surface), 0.55)
+            }
+        };
     };
+
+    const dark = buildPalette(true);
+    const lightMode = buildPalette(false);
+    const scheme = dark.scheme;
+    const accentSat = dark.accentSat;
+    const cssVars = (c) =>
+        Object.entries(c).map(([k, v]) => `--${k}: ${v};`).join(" ");
 
     const swatchColors = [theme.seedColor, theme.secondaryColor, theme.tertiaryColor]
         .filter((c) => c && HEX_COLOR.test(c));
@@ -161,8 +235,8 @@ async function themePage(url, env) {
     const favicon = "data:image/svg+xml," + encodeURIComponent(
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
         `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-        `<stop offset="0" stop-color="hsl(${hsl.h} 45% 68%)"/>` +
-        `<stop offset="1" stop-color="hsl(${hsl.h} 50% 40%)"/>` +
+        `<stop offset="0" stop-color="${adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(70)), accentSat)}"/>` +
+        `<stop offset="1" stop-color="${adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(40)), accentSat)}"/>` +
         `</linearGradient></defs>` +
         `<circle cx="50" cy="50" r="50" fill="url(#g)"/>` +
         `<g transform="translate(50,50) scale(1.5) translate(-50,-50) translate(26.777779,26.777779) scale(0.46444446)">` +
@@ -179,49 +253,77 @@ async function themePage(url, env) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="${colors.bg}">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="${dark.colors.bg}">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="${lightMode.colors.bg}">
 <link rel="icon" type="image/svg+xml" href="${favicon}">
 <meta property="og:title" content="${esc(theme.name)} · ColorBlendr">
 <meta property="og:description" content="${esc(theme.description)}">
 <meta property="og:type" content="website">
 <title>${esc(theme.name)} · ColorBlendr</title>
 <style>
+  :root { ${cssVars(dark.colors)} }
+  @media (prefers-color-scheme: light) {
+    :root { ${cssVars(lightMode.colors)} }
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: ${colors.bg}; color: ${colors.text};
+    background: var(--bg); color: var(--text);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* Ambient color field behind the glass: three blurred hue orbs. */
+  .bg { position: fixed; inset: 0; pointer-events: none; z-index: -1; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(90px); }
+  .orb1 {
+    width: 55vmax; height: 55vmax; top: -18vmax; left: -12vmax;
+    background: var(--orb1);
+  }
+  .orb2 {
+    width: 45vmax; height: 45vmax; bottom: -15vmax; right: -10vmax;
+    background: var(--orb2);
+  }
+  .orb3 {
+    width: 30vmax; height: 30vmax; top: 45%; left: 55%;
+    background: var(--orb3);
   }
   .card {
     position: relative; overflow: hidden;
     width: min(400px, calc(100vw - 32px)); margin: 24px;
     padding: 40px 32px 32px; text-align: center;
-    background: ${colors.card}; border: 1px solid ${colors.border}; border-radius: 28px;
-    box-shadow: 0 24px 80px rgba(0,0,0,.45);
+    background: var(--glassFill);
+    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+    backdrop-filter: blur(28px) saturate(1.5);
+    border: 1px solid var(--glassBorder);
+    border-radius: 28px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.45),
+                inset 0 1px 0 var(--glassHighlight);
   }
   .glow {
     position: absolute; inset: 0 0 auto 0; height: 200px; pointer-events: none;
-    background: radial-gradient(ellipse at 50% -20%, ${colors.glow}, transparent 72%);
+    background: radial-gradient(ellipse at 50% -20%, var(--glow), transparent 72%);
   }
   .brand {
     font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
-    color: ${colors.subtle}; margin-bottom: 28px;
+    color: var(--subtle); margin-bottom: 28px;
   }
   .dots { position: relative; height: 64px; margin-bottom: 20px; }
   .dot {
     display: inline-block; width: 64px; height: 64px; border-radius: 50%;
-    margin: 0 -10px; border: 4px solid ${colors.card};
+    margin: 0 -10px; border: 4px solid var(--dotRing);
     box-shadow: 0 8px 24px rgba(0,0,0,.35);
   }
   h1 { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
-  .author { color: ${colors.subtle}; margin: 0 0 16px; font-size: 14px; }
-  .desc { color: ${colors.chipText}; font-size: 15px; line-height: 1.6; margin: 0 0 20px; }
+  .author { color: var(--subtle); margin: 0 0 16px; font-size: 14px; }
+  .desc { color: var(--chipText); font-size: 15px; line-height: 1.6; margin: 0 0 20px; }
   .chips { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 8px 14px; border-radius: 999px;
-    background: ${colors.chipBg}; color: ${colors.chipText};
+    background: var(--chipFill);
+    border: 1px solid var(--chipBorder);
+    color: var(--chipText);
     font-size: 13px; font-weight: 600;
   }
   .chip svg { display: block; }
@@ -231,11 +333,20 @@ async function themePage(url, env) {
   }
   a.btn:hover { filter: brightness(1.06); }
   a.btn:active { transform: scale(.98); }
-  .open { background: ${colors.accent}; color: ${colors.onAccent}; }
-  .get { background: ${colors.tonal}; color: ${colors.onTonal}; margin-top: 10px; }
+  .open { background: var(--accent); color: var(--onAccent); }
+  .get {
+    background: var(--tonalFill);
+    border: 1px solid var(--tonalBorder);
+    color: var(--onTonal); margin-top: 10px;
+  }
 </style>
 </head>
 <body>
+<div class="bg">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
 <main class="card">
   <div class="glow"></div>
   <div class="brand">ColorBlendr Community</div>
@@ -261,23 +372,24 @@ async function themePage(url, env) {
     });
 }
 
-// #rrggbb -> { h, s, l } (0-360 / 0-100 / 0-100).
-function hexToHsl(hex) {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    const l = (max + min) / 2;
-    if (max === min) return { h: 0, s: 0, l: Math.round(l * 100) };
-    const d = max - min;
-    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    let h;
-    switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        default: h = (r - g) / d + 4;
-    }
-    return { h: Math.round(h * 60), s: Math.round(s * 100), l: Math.round(l * 100) };
+// Ports of the app's CAM16 slider math (ColorUtil.adjustSaturation /
+// shiftLightness); Hct = same hue/chroma/lstar space as Cam.
+function adjustSaturation(hex, saturation) {
+    if (saturation === 100) return hex;
+    const satF = (saturation - 100) / 100;
+    const hct = Hct.fromInt(argbFromHex(hex));
+    // 200 chroma target = max representable at this hue/tone.
+    const target = Hct.from(hct.hue, 200, hct.tone);
+    let chroma = hct.chroma;
+    chroma += satF > 0 ? (target.chroma - chroma) * satF : chroma * satF;
+    return hexFromArgb(Hct.from(hct.hue, chroma, hct.tone).toInt());
+}
+
+function shiftLightness(hex, lightness) {
+    if (lightness === 100) return hex;
+    const hct = Hct.fromInt(argbFromHex(hex));
+    const tone = Math.max(0, Math.min(100, hct.tone + (lightness - 100) / 10));
+    return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
 }
 
 function json(obj, status = 200) {

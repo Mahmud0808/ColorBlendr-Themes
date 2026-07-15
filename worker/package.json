@@ -1,0 +1,8 @@
+{
+  "name": "colorblendr-themes-worker",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@material/material-color-utilities": "^0.3.0"
+  }
+}
