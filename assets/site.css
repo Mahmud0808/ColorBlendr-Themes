@@ -133,6 +133,11 @@ a.tcard:hover .tswatch { transform: scale(1.06) rotate(-3deg); }
   animation: menupop .22s cubic-bezier(.2,.7,.2,1);
   transition: background-color var(--recolor, 1.6s) ease;
 }
+/* Toolbar wraps on mobile: sort button rides the end of its row, so the
+   right-anchored dropdown stays on the page. */
+@media (max-width: 768px) {
+  .menuwrap { margin-left: auto; }
+}
 @keyframes menupop {
   from { opacity: 0; transform: scale(.92) translateY(-6px); }
   to { opacity: 1; transform: none; }
