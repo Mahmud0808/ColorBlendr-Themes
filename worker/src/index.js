@@ -12,7 +12,6 @@
 
 import {
     Hct,
-    MaterialDynamicColors,
     SchemeContent,
     SchemeExpressive,
     SchemeFidelity,
@@ -39,6 +38,10 @@ const SCHEME_BY_STYLE = {
     SPRITZ: SchemeNeutral,
     CMF: SchemeTonalSpot
 };
+
+// App enum ordinal -> MCU spec. JS lib has no 2026 yet; nearest is 2025.
+const SPEC_BY_VERSION = { 0: "2021", 1: "2025", 2: "2025" };
+const DEFAULT_SPEC = "2025";
 
 const ID_REGEX = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const DEVICE_REGEX = /^[a-f0-9]{64}$/;
@@ -170,8 +173,13 @@ async function themePage(url, env) {
         hex + Math.round(a * 255).toString(16).padStart(2, "0");
     const isMono = theme.style === "MONOCHROMATIC";
 
+    const swatchColors = [theme.seedColor, theme.secondaryColor, theme.tertiaryColor]
+        .filter((c) => c && HEX_COLOR.test(c));
+
+    const spec = SPEC_BY_VERSION[theme.colorSpecVersion] ?? DEFAULT_SPEC;
+
     const buildPalette = (isDark) => {
-        const scheme = new SchemeCtor(Hct.fromInt(argbFromHex(seed)), isDark, 0);
+        const scheme = new SchemeCtor(Hct.fromInt(argbFromHex(seed)), isDark, 0, spec);
         // Mode-specific themes carry light slider variants.
         const light = !isDark && theme.modeSpecificThemes;
         const accentSat = isMono ? 100
@@ -181,40 +189,29 @@ async function themePage(url, env) {
         const bgLight = isMono ? 100
             : (light ? theme.backgroundLightnessLight : theme.backgroundLightness) ?? 100;
 
-        const dc = MaterialDynamicColors;
-        const role = (dynamicColor) => hexFromArgb(dynamicColor.getArgb(scheme));
-        const accentRole = (dynamicColor) => adjustSaturation(role(dynamicColor), accentSat);
-        const surfaceRole = (dynamicColor) => shiftLightness(
-            adjustSaturation(role(dynamicColor), bgSat),
-            bgLight
+        // Sliders on surfaces, per-role tone floor/ceiling: dark surface =
+        // tone 6, raw shift lands on tone 0 = pure black page; floors keep
+        // bg/card/chip elevation steps apart.
+        const surfaceRole = (argb, minTone, maxTone) => shiftLightness(
+            adjustSaturation(hexFromArgb(argb), bgSat), bgLight, minTone, maxTone
         );
-
-        const glassBase = role(dc.inverseSurface);
-        return {
-            scheme,
-            accentSat,
-            colors: {
-                bg: surfaceRole(dc.surface),
-                glow: alpha(accentRole(dc.primary), 0.16),
-                text: role(dc.onSurface),
-                subtle: alpha(role(dc.onSurfaceVariant), 0.85),
-                chipText: role(dc.onSurfaceVariant),
-                accent: accentRole(dc.primary),
-                onAccent: role(dc.onPrimary),
-                onTonal: role(dc.onSurface),
-                orb1: alpha(accentRole(dc.primary), 0.32),
-                orb2: alpha(accentRole(dc.tertiary), 0.26),
-                orb3: alpha(accentRole(dc.secondary), 0.18),
-                glassFill: alpha(glassBase, 0.06),
-                glassBorder: alpha(glassBase, 0.14),
-                glassHighlight: alpha(glassBase, 0.10),
-                chipFill: alpha(glassBase, 0.09),
-                chipBorder: alpha(glassBase, 0.10),
-                tonalFill: alpha(glassBase, 0.10),
-                tonalBorder: alpha(glassBase, 0.12),
-                dotRing: alpha(role(dc.surface), 0.55)
-            }
+        const colors = {
+            bg: surfaceRole(scheme.surface, 4, 99),
+            text: hexFromArgb(scheme.onSurface),
+            subtle: alpha(hexFromArgb(scheme.onSurfaceVariant), 0.85),
+            chipText: hexFromArgb(scheme.onSurfaceVariant),
+            accent: adjustSaturation(hexFromArgb(scheme.primary), accentSat),
+            onAccent: hexFromArgb(scheme.onPrimary),
+            card: surfaceRole(scheme.surfaceContainer, 10, 96),
+            chip: surfaceRole(scheme.surfaceContainerHigh, 14, 93),
+            tonal: hexFromArgb(scheme.secondaryContainer),
+            onTonalBtn: hexFromArgb(scheme.onSecondaryContainer)
         };
+        // Raw theme hex can share the card's tone and vanish; clamp per mode.
+        swatchColors.forEach((c, i) => {
+            colors["dot" + i] = contrastSafe(c, isDark);
+        });
+        return { scheme, accentSat, colors };
     };
 
     const dark = buildPalette(true);
@@ -224,10 +221,8 @@ async function themePage(url, env) {
     const cssVars = (c) =>
         Object.entries(c).map(([k, v]) => `--${k}: ${v};`).join(" ");
 
-    const swatchColors = [theme.seedColor, theme.secondaryColor, theme.tertiaryColor]
-        .filter((c) => c && HEX_COLOR.test(c));
     const swatches = swatchColors
-        .map((c) => `<span class="dot" style="background:${c}"></span>`)
+        .map((_, i) => `<span class="dot" style="background:var(--dot${i})"></span>`)
         .join("");
 
     // Favicon = ColorBlendr launcher mark (drop + swoosh) on a seed-tinted
@@ -256,10 +251,10 @@ async function themePage(url, env) {
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="${dark.colors.bg}">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="${lightMode.colors.bg}">
 <link rel="icon" type="image/svg+xml" href="${favicon}">
-<meta property="og:title" content="${esc(theme.name)} · ColorBlendr">
+<meta property="og:title" content="${esc(theme.name)} - ColorBlendr">
 <meta property="og:description" content="${esc(theme.description)}">
 <meta property="og:type" content="website">
-<title>${esc(theme.name)} · ColorBlendr</title>
+<title>${esc(theme.name)} - ColorBlendr</title>
 <style>
   :root { ${cssVars(dark.colors)} }
   @media (prefers-color-scheme: light) {
@@ -267,43 +262,41 @@ async function themePage(url, env) {
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    /* dvh tracks mobile browser bars; vh fallback for old engines. */
+    margin: 0; min-height: 100vh; min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background: var(--bg); color: var(--text);
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
-  /* Ambient color field behind the glass: three blurred hue orbs. */
-  .bg { position: fixed; inset: 0; pointer-events: none; z-index: -1; }
-  .orb { position: absolute; border-radius: 50%; filter: blur(90px); }
-  .orb1 {
-    width: 55vmax; height: 55vmax; top: -18vmax; left: -12vmax;
-    background: var(--orb1);
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(18px) scale(.98); }
+    to { opacity: 1; transform: none; }
   }
-  .orb2 {
-    width: 45vmax; height: 45vmax; bottom: -15vmax; right: -10vmax;
-    background: var(--orb2);
+  @keyframes fadeup {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
   }
-  .orb3 {
-    width: 30vmax; height: 30vmax; top: 45%; left: 55%;
-    background: var(--orb3);
+  @keyframes pop {
+    from { opacity: 0; transform: scale(.4); }
+    60% { transform: scale(1.08); }
+    to { opacity: 1; transform: scale(1); }
   }
   .card {
-    position: relative; overflow: hidden;
     width: min(400px, calc(100vw - 32px)); margin: 24px;
     padding: 40px 32px 32px; text-align: center;
-    background: var(--glassFill);
-    -webkit-backdrop-filter: blur(28px) saturate(1.5);
-    backdrop-filter: blur(28px) saturate(1.5);
-    border: 1px solid var(--glassBorder);
-    border-radius: 28px;
-    box-shadow: 0 24px 80px rgba(0,0,0,.45),
-                inset 0 1px 0 var(--glassHighlight);
+    background: var(--card); border-radius: 28px;
+    animation: rise .5s cubic-bezier(.2,.7,.2,1) backwards;
   }
-  .glow {
-    position: absolute; inset: 0 0 auto 0; height: 200px; pointer-events: none;
-    background: radial-gradient(ellipse at 50% -20%, var(--glow), transparent 72%);
-  }
+  .card > * { animation: fadeup .45s cubic-bezier(.2,.7,.2,1) backwards; }
+  .card > :nth-child(2) { animation-delay: .06s; }
+  .card > :nth-child(3) { animation-delay: .1s; }
+  .card > :nth-child(4) { animation-delay: .14s; }
+  .card > :nth-child(5) { animation-delay: .18s; }
+  .card > :nth-child(6) { animation-delay: .22s; }
+  .card > :nth-child(7) { animation-delay: .26s; }
+  .card > :nth-child(8) { animation-delay: .3s; }
   .brand {
     font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
     color: var(--subtle); margin-bottom: 28px;
@@ -311,9 +304,14 @@ async function themePage(url, env) {
   .dots { position: relative; height: 64px; margin-bottom: 20px; }
   .dot {
     display: inline-block; width: 64px; height: 64px; border-radius: 50%;
-    margin: 0 -10px; border: 4px solid var(--dotRing);
-    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    margin: 0 -10px; border: 4px solid var(--card);
+    animation: pop .55s cubic-bezier(.34,1.56,.64,1) backwards;
+    transition: transform .25s cubic-bezier(.2,.7,.2,1);
   }
+  .dot:nth-child(1) { animation-delay: .12s; }
+  .dot:nth-child(2) { animation-delay: .2s; }
+  .dot:nth-child(3) { animation-delay: .28s; }
+  .dot:hover { transform: translateY(-5px); }
   h1 { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
   .author { color: var(--subtle); margin: 0 0 16px; font-size: 14px; }
   .desc { color: var(--chipText); font-size: 15px; line-height: 1.6; margin: 0 0 20px; }
@@ -321,34 +319,31 @@ async function themePage(url, env) {
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 8px 14px; border-radius: 999px;
-    background: var(--chipFill);
-    border: 1px solid var(--chipBorder);
-    color: var(--chipText);
+    background: var(--chip); color: var(--chipText);
     font-size: 13px; font-weight: 600;
+    transition: transform .2s cubic-bezier(.2,.7,.2,1);
   }
+  .chip:hover { transform: translateY(-2px); }
   .chip svg { display: block; }
   a.btn {
     display: block; padding: 15px 24px; border-radius: 999px; text-decoration: none;
-    font-size: 15px; font-weight: 600; transition: filter .15s ease, transform .1s ease;
+    font-size: 15px; font-weight: 600;
+    transition: filter .15s ease, transform .15s cubic-bezier(.2,.7,.2,1),
+                border-radius .25s cubic-bezier(.2,.7,.2,1), box-shadow .2s ease;
   }
-  a.btn:hover { filter: brightness(1.06); }
-  a.btn:active { transform: scale(.98); }
+  a.btn:hover { filter: brightness(1.06); transform: translateY(-2px); }
+  a.btn:active { transform: scale(.97); border-radius: 18px; }
   .open { background: var(--accent); color: var(--onAccent); }
-  .get {
-    background: var(--tonalFill);
-    border: 1px solid var(--tonalBorder);
-    color: var(--onTonal); margin-top: 10px;
+  .open:hover { box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .get { background: var(--tonal); color: var(--onTonalBtn); margin-top: 10px; }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card > *, .dot { animation: none; }
+    .dot, .chip, a.btn { transition: none; }
   }
 </style>
 </head>
 <body>
-<div class="bg">
-  <div class="orb orb1"></div>
-  <div class="orb orb2"></div>
-  <div class="orb orb3"></div>
-</div>
 <main class="card">
-  <div class="glow"></div>
   <div class="brand">ColorBlendr Community</div>
   <div class="dots">${swatches}</div>
   <h1>${esc(theme.name)}</h1>
@@ -372,8 +367,27 @@ async function themePage(url, env) {
     });
 }
 
-// Ports of the app's CAM16 slider math (ColorUtil.adjustSaturation /
-// shiftLightness); Hct = same hue/chroma/lstar space as Cam.
+// Swatch dot tone clamped away from the card surface (dark card ~tone 12,
+// light ~94) so near-black/near-white seeds stay visible. Hue/chroma kept.
+function contrastSafe(hex, isDark) {
+    const hct = Hct.fromInt(argbFromHex(hex));
+    const tone = isDark ? Math.max(hct.tone, 30) : Math.min(hct.tone, 80);
+    if (tone === hct.tone) return hex;
+    return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
+}
+
+// Port of the app's CAM16 lightness slider (ColorUtil.shiftLightness) with
+// optional tone bounds so page surfaces never collapse to black/white.
+function shiftLightness(hex, lightness, minTone = 0, maxTone = 100) {
+    const hct = Hct.fromInt(argbFromHex(hex));
+    const tone = Math.max(minTone, Math.min(maxTone,
+        hct.tone + (lightness - 100) / 10));
+    if (tone === hct.tone) return hex;
+    return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
+}
+
+// Port of the app's CAM16 saturation slider (ColorUtil.adjustSaturation);
+// Hct = same hue/chroma/lstar space as Cam.
 function adjustSaturation(hex, saturation) {
     if (saturation === 100) return hex;
     const satF = (saturation - 100) / 100;
@@ -383,13 +397,6 @@ function adjustSaturation(hex, saturation) {
     let chroma = hct.chroma;
     chroma += satF > 0 ? (target.chroma - chroma) * satF : chroma * satF;
     return hexFromArgb(Hct.from(hct.hue, chroma, hct.tone).toInt());
-}
-
-function shiftLightness(hex, lightness) {
-    if (lightness === 100) return hex;
-    const hct = Hct.fromInt(argbFromHex(hex));
-    const tone = Math.max(0, Math.min(100, hct.tone + (lightness - 100) / 10));
-    return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
 }
 
 function json(obj, status = 200) {
