@@ -150,10 +150,26 @@ async function themePage(url, env) {
         onTonal: tone(15, 90)
     };
 
-    const swatches = [theme.seedColor, theme.secondaryColor, theme.tertiaryColor]
-        .filter((c) => c && HEX_COLOR.test(c))
+    const swatchColors = [theme.seedColor, theme.secondaryColor, theme.tertiaryColor]
+        .filter((c) => c && HEX_COLOR.test(c));
+    const swatches = swatchColors
         .map((c) => `<span class="dot" style="background:${c}"></span>`)
         .join("");
+
+    // Favicon = ColorBlendr launcher mark (drop + swoosh) on a seed-tinted
+    // gradient disc, mirroring the app icon's dynamic background.
+    const favicon = "data:image/svg+xml," + encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
+        `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+        `<stop offset="0" stop-color="hsl(${hsl.h} 45% 68%)"/>` +
+        `<stop offset="1" stop-color="hsl(${hsl.h} 50% 40%)"/>` +
+        `</linearGradient></defs>` +
+        `<circle cx="50" cy="50" r="50" fill="url(#g)"/>` +
+        `<g transform="translate(50,50) scale(1.5) translate(-50,-50) translate(26.777779,26.777779) scale(0.46444446)">` +
+        `<path fill="#fff" fill-opacity="0.4" d="M86.2,66.5Q86.8,61.7 86.1,57.2C104.3,66.1 106.8,81 82,81C59.7,81 29.9,74.8 10,61.2C-4.9,51.2 -4.9,38.8 21.2,39Q18.6,43.1 17.3,46.2Q0.1,46 12.8,54.6C34.8,68.6 62.1,73.6 84.5,74.4Q99.4,74.4 86.2,66.5z"/>` +
+        `<path fill="#fff" fill-opacity="0.902" d="M82.6,70.2C56.5,68.5 34.3,62.5 18,52.5C20,43.5 33,24 49.8,6.6C72.5,31.5 88.3,50.5 82.6,70.2zM73.4,84.7C56,101 24,94 17.2,70.3C30.8,78.5 48.7,83.6 73.4,84.7z"/>` +
+        `</g></svg>`
+    );
 
     const thumbIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M13.12 2.06 7.58 7.6c-.37.37-.58.88-.58 1.41V19c0 1.1.9 2 2 2h9c.8 0 1.52-.48 1.84-1.21l3.26-7.61C23.94 10.2 22.49 8 20.34 8h-5.65l.95-4.58c.1-.5-.05-1.01-.41-1.37-.59-.58-1.53-.58-2.11.01ZM3 21c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2s-2 .9-2 2v8c0 1.1.9 2 2 2Z"/></svg>`;
     const downloadIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M16.59 9H15V4c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v5H7.41c-.89 0-1.34 1.08-.71 1.71l4.59 4.59c.39.39 1.02.39 1.41 0l4.59-4.59c.63-.63.19-1.71-.7-1.71ZM5 19c0 .55.45 1 1 1h12c.55 0 1-.45 1-1s-.45-1-1-1H6c-.55 0-1 .45-1 1Z"/></svg>`;
@@ -164,6 +180,7 @@ async function themePage(url, env) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="${colors.bg}">
+<link rel="icon" type="image/svg+xml" href="${favicon}">
 <meta property="og:title" content="${esc(theme.name)} · ColorBlendr">
 <meta property="og:description" content="${esc(theme.description)}">
 <meta property="og:type" content="website">
