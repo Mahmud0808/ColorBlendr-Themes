@@ -98,12 +98,23 @@ function seedMatchesColor(seedHex, queryHex) {
 
 // ---- Site-wide dynamic coloring -------------------------------------------
 
+// Site follows the OS light/dark preference; MCU derives both variants
+// from the same seed. Mode flips re-render baked card HTML via handlers.
+const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+let isDark = darkQuery.matches;
+const modeHandlers = [];
+darkQuery.addEventListener("change", (e) => {
+	isDark = e.matches;
+	applySiteSeed(restingSeed);
+	for (const handler of modeHandlers) handler();
+});
+
 function applySiteSeed(seedHex, style, spec, sliders) {
 	const { accentSat = 100, bgSat = 100, bgLight = 100 } = sliders ?? {};
 	const Ctor = SCHEME_BY_STYLE[style] ?? SchemeTonalSpot;
 	const scheme = new Ctor(
 		Hct.fromInt(argbFromHex(seedHex)),
-		true,
+		isDark,
 		0,
 		spec ?? DEFAULT_SPEC,
 	);
@@ -134,6 +145,11 @@ function applySiteSeed(seedHex, style, spec, sliders) {
 	for (const [k, v] of Object.entries(vars)) {
 		document.documentElement.style.setProperty(k, v);
 	}
+
+	// Browser chrome follows the page surface.
+	document
+		.querySelector('meta[name="theme-color"]')
+		?.setAttribute("content", vars["--bg"]);
 
 	// Hero logo disc follows the seed (launcher gradient formula).
 	const stops = document.querySelectorAll("#lg stop");
@@ -239,7 +255,7 @@ function cardData(theme) {
 	const seed = HEX.test(theme.seedColor ?? "") ? theme.seedColor : "#6750A4";
 	const Ctor = SCHEME_BY_STYLE[theme.style] ?? SchemeTonalSpot;
 	const spec = SPEC_BY_VERSION[theme.colorSpecVersion] ?? DEFAULT_SPEC;
-	const scheme = new Ctor(Hct.fromInt(argbFromHex(seed)), true, 0, spec);
+	const scheme = new Ctor(Hct.fromInt(argbFromHex(seed)), isDark, 0, spec);
 	const isMono = theme.style === "MONOCHROMATIC";
 	const accentSat = isMono ? 100 : (theme.accentSaturation ?? 100);
 	const bgSat = isMono ? 100 : (theme.backgroundSaturation ?? 100);
@@ -278,6 +294,10 @@ function cardData(theme) {
 			false,
 		),
 		center: seed,
+		// Primary tonal run for the hover strip along the card's bottom edge.
+		strip: [95, 85, 70, 55, 40, 25].map((tone) =>
+			adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(tone)), accentSat),
+		),
 		container: shiftLightness(
 			adjustSaturation(hexFromArgb(scheme.surfaceContainerHigh), bgSat),
 			bgLight,
@@ -303,19 +323,24 @@ const thumbIcon =
 const downloadIcon =
 	'<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M16.59 9H15V4c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v5H7.41c-.89 0-1.34 1.08-.71 1.71l4.59 4.59c.39.39 1.02.39 1.41 0l4.59-4.59c.63-.63.19-1.71-.7-1.71ZM5 19c0 .55.45 1 1 1h12c.55 0 1-.45 1-1s-.45-1-1-1H6c-.55 0-1 .45-1 1Z"/></svg>';
 
-function cardHtml(theme) {
+function cardHtml(theme, countUp = false) {
 	const c = cardData(theme);
 	const seed = HEX.test(theme.seedColor ?? "") ? theme.seedColor : "";
+	// countUp wraps stats so initCountUps can animate them on reveal;
+	// marquee cards stay plain (each theme appears there multiple times).
+	const num = (value) =>
+		countUp ? `<i class="cnum" data-count="${value}">0</i>` : value;
 	return `<a class="tcard" data-seed="${seed}" data-style="${esc(theme.style ?? "")}" data-spec="${c.spec}" data-asat="${c.accentSat}" data-bsat="${c.bgSat}" data-blight="${c.bgLight}" style="background:${c.container};color:${c.text}" href="${WORKER}/theme/${esc(theme.id)}">
         ${swatchSvg(c)}
         <span class="tinfo">
             <span class="tname">${esc(theme.name)}</span>
             <span class="tauthor" style="color:${c.subtle}">by ${esc(theme.author || "Anonymous")}</span>
             <span class="tstats" style="color:${c.subtle}">
-                <span>${thumbIcon}${theme.upvotes ?? 0}</span>
-                <span>${downloadIcon}${theme.downloads ?? 0}</span>
+                <span>${thumbIcon}${num(theme.upvotes ?? 0)}</span>
+                <span>${downloadIcon}${num(theme.downloads ?? 0)}</span>
             </span>
         </span>
+        <span class="pstrip" aria-hidden="true">${c.strip.map((hex) => `<i style="background:${hex}"></i>`).join("")}</span>
     </a>`;
 }
 
@@ -339,6 +364,56 @@ async function loadThemes() {
 	const base = location.pathname.replace(/[^/]*$/, "");
 	const response = await fetch(`${base}index.json`);
 	return response.json();
+}
+
+// Cursor spotlight on cards: one delegated listener feeds --mx/--my to the
+// hovered element's ::after radial gradient.
+function initSpotlight() {
+	if (!matchMedia("(hover: hover)").matches) return;
+	document.addEventListener(
+		"pointermove",
+		(e) => {
+			const el = e.target.closest?.(".tcard, .info");
+			if (!el) return;
+			const rect = el.getBoundingClientRect();
+			el.style.setProperty("--mx", e.clientX - rect.left + "px");
+			el.style.setProperty("--my", e.clientY - rect.top + "px");
+		},
+		{ passive: true },
+	);
+}
+
+// Count-up numbers when they scroll into view.
+const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)");
+
+function animateCount(el) {
+	const target = +el.dataset.count || 0;
+	if (REDUCED_MOTION.matches) {
+		el.textContent = target;
+		return;
+	}
+	const start = performance.now();
+	const duration = 900;
+	const tick = (now) => {
+		const p = Math.min(1, (now - start) / duration);
+		el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+		if (p < 1) requestAnimationFrame(tick);
+	};
+	requestAnimationFrame(tick);
+}
+
+function initCountUps(scope) {
+	const observer = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				if (!entry.isIntersecting) continue;
+				observer.unobserve(entry.target);
+				animateCount(entry.target);
+			}
+		},
+		{ threshold: 0.5 },
+	);
+	scope.querySelectorAll("[data-count]").forEach((el) => observer.observe(el));
 }
 
 // Scroll-in reveal for sections below the fold.
@@ -424,24 +499,30 @@ export async function initHome() {
 	applySiteSeed(INITIAL_SEED);
 	initReveal();
 	initFaq();
+	initSpotlight();
 	try {
 		const themes = await loadThemes();
 		startSeedRotation(themes);
 		const top = [...themes].sort(SORTS.trending).slice(0, 10);
-		const set = top.map(cardHtml).join("");
-		const setReversed = [...top].reverse().map(cardHtml).join("");
 		// Loop = two identical halves shifted -50%; each half must cover the
 		// viewport or blank space drifts in before the wrap. Rebuilt when the
-		// viewport outgrows the built halves (maximize, zoom out).
+		// viewport outgrows the built halves (maximize, zoom out) and when the
+		// light/dark mode flips (card colors are baked into the HTML).
 		const setWidth = top.length * 296;
 		let builtPerHalf = 0;
-		const buildRail = () => {
+		const buildRail = (force) => {
+			if (force) builtPerHalf = 0;
 			const perHalf = Math.max(
 				1,
 				Math.ceil(window.innerWidth / setWidth),
 			);
 			if (perHalf <= builtPerHalf) return;
 			builtPerHalf = perHalf;
+			const set = top.map((t) => cardHtml(t)).join("");
+			const setReversed = [...top]
+				.reverse()
+				.map((t) => cardHtml(t))
+				.join("");
 			const half = set.repeat(perHalf);
 			const halfReversed = setReversed.repeat(perHalf);
 			// Second row: mobile only, reversed list, opposite drift.
@@ -450,8 +531,22 @@ export async function initHome() {
 				`<div class="marquee-track track2">${halfReversed}${halfReversed}</div>`;
 		};
 		buildRail();
-		window.addEventListener("resize", buildRail);
+		window.addEventListener("resize", () => buildRail());
+		modeHandlers.push(() => buildRail(true));
 		initHoverTheming(document.getElementById("rail"));
+
+		// Catalog totals under the rail, counting up on reveal.
+		const stats = document.getElementById("stats");
+		if (stats) {
+			const sum = (key) =>
+				themes.reduce((acc, t) => acc + (t[key] ?? 0), 0);
+			const values = [themes.length, sum("upvotes"), sum("downloads")];
+			stats.querySelectorAll(".statnum").forEach((el, i) => {
+				el.dataset.count = values[i];
+			});
+			stats.hidden = false;
+			initCountUps(stats);
+		}
 	} catch {
 		document.getElementById("rail").innerHTML =
 			'<div class="loading">Could not load themes right now.</div>';
@@ -461,6 +556,7 @@ export async function initHome() {
 export async function initAllThemes() {
 	applySiteSeed(INITIAL_SEED);
 	initReveal();
+	initSpotlight();
 	initHoverTheming(document.getElementById("grid"));
 	let themes = [];
 	try {
@@ -474,6 +570,9 @@ export async function initAllThemes() {
 
 	const search = document.getElementById("search");
 	let sortValue = "trending";
+	// Stats count up on the first render only; re-renders (typing, sorting)
+	// would otherwise replay the animation on every keystroke.
+	let animateStats = true;
 	const render = () => {
 		const query = search.value.trim().toLowerCase();
 		const colorQuery = parseColorQuery(query);
@@ -487,11 +586,17 @@ export async function initAllThemes() {
 							(t.author ?? "").toLowerCase().includes(query)),
 			)
 			.sort(SORTS[sortValue] ?? SORTS.trending);
-		document.getElementById("grid").innerHTML = list.length
-			? list.map(cardHtml).join("")
+		const grid = document.getElementById("grid");
+		grid.innerHTML = list.length
+			? list.map((t) => cardHtml(t, animateStats)).join("")
 			: '<div class="loading">No themes match.</div>';
+		if (animateStats) {
+			initCountUps(grid);
+			animateStats = false;
+		}
 	};
 	search.addEventListener("input", render);
+	modeHandlers.push(render);
 
 	// Themed hue wheel popover fills the search box with a hex; render()
 	// detects it. Native color dialog can't be styled.

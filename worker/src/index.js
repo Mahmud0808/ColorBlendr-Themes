@@ -195,6 +195,9 @@ async function themePage(url, env) {
         const surfaceRole = (argb, minTone, maxTone) => shiftLightness(
             adjustSaturation(hexFromArgb(argb), bgSat), bgLight, minTone, maxTone
         );
+        // Light ceilings sit well below the bg's tone 99: the default light
+        // scheme puts surface ~98 and surfaceContainer ~94, which reads as
+        // one flat sheet; 92/88 keep the elevation steps visible.
         const colors = {
             bg: surfaceRole(scheme.surface, 4, 99),
             text: hexFromArgb(scheme.onSurface),
@@ -202,8 +205,8 @@ async function themePage(url, env) {
             chipText: hexFromArgb(scheme.onSurfaceVariant),
             accent: adjustSaturation(hexFromArgb(scheme.primary), accentSat),
             onAccent: hexFromArgb(scheme.onPrimary),
-            card: surfaceRole(scheme.surfaceContainer, 10, 96),
-            chip: surfaceRole(scheme.surfaceContainerHigh, 14, 93),
+            card: surfaceRole(scheme.surfaceContainer, 10, isDark ? 96 : 92),
+            chip: surfaceRole(scheme.surfaceContainerHigh, 14, isDark ? 93 : 88),
             tonal: hexFromArgb(scheme.secondaryContainer),
             onTonalBtn: hexFromArgb(scheme.onSecondaryContainer)
         };
@@ -259,9 +262,21 @@ async function themePage(url, env) {
 <meta property="og:url" content="${esc(url.origin)}/theme/${esc(id)}">
 <title>${esc(theme.name)} - ColorBlendr</title>
 <style>
-  :root { ${cssVars(dark.colors)} }
+  :root {
+    ${cssVars(dark.colors)}
+    --aurOp: .3; --grainOp: .045; --glow: 16%;
+    --font-d: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
   @media (prefers-color-scheme: light) {
-    :root { ${cssVars(lightMode.colors)} }
+    :root { ${cssVars(lightMode.colors)} --aurOp: .5; --grainOp: .03; --glow: 28%; }
+  }
+  /* Same display face as the gallery site; GitHub Pages serves it with
+     CORS enabled, so the cross-origin font load is allowed. */
+  @font-face {
+    font-family: "Outfit";
+    src: url("https://mahmud0808.github.io/ColorBlendr-Themes/assets/fonts/outfit-var.woff2") format("woff2-variations");
+    font-weight: 100 900;
+    font-display: swap;
   }
   * { box-sizing: border-box; }
   body {
@@ -272,6 +287,30 @@ async function themePage(url, env) {
     background: var(--bg); color: var(--text);
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+  }
+  /* Aurora + film grain, mirroring the gallery site's backdrop. */
+  .aurora {
+    position: fixed; inset: -20%; z-index: 0; pointer-events: none;
+    filter: blur(90px); opacity: var(--aurOp);
+  }
+  .aurora i { position: absolute; border-radius: 50%; will-change: transform; }
+  .aurora i:nth-child(1) {
+    width: 46vmax; height: 46vmax; left: -8%; top: -10%;
+    background: radial-gradient(circle, var(--accent), transparent 70%);
+    animation: aur-a 26s ease-in-out infinite alternate;
+  }
+  .aurora i:nth-child(2) {
+    width: 38vmax; height: 38vmax; right: -6%; bottom: -12%;
+    background: radial-gradient(circle, var(--dot0, var(--tonal)), transparent 70%);
+    animation: aur-b 32s ease-in-out infinite alternate;
+  }
+  @keyframes aur-a { to { transform: translate(10vmax, 6vmax) scale(1.15); } }
+  @keyframes aur-b { to { transform: translate(-9vmax, -5vmax) scale(.9); } }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    opacity: var(--grainOp);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
   }
   @keyframes rise {
     from { opacity: 0; transform: translateY(18px) scale(.98); }
@@ -287,9 +326,12 @@ async function themePage(url, env) {
     to { opacity: 1; transform: scale(1); }
   }
   .card {
+    position: relative; z-index: 1;
     width: min(400px, calc(100vw - 32px)); margin: 24px;
     padding: 40px 32px 32px; text-align: center;
     background: var(--card); border-radius: 28px;
+    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    box-shadow: 0 30px 80px -24px color-mix(in srgb, var(--accent) var(--glow), transparent);
     animation: rise .5s cubic-bezier(.2,.7,.2,1) backwards;
   }
   .card > * { animation: fadeup .45s cubic-bezier(.2,.7,.2,1) backwards; }
@@ -301,6 +343,7 @@ async function themePage(url, env) {
   .card > :nth-child(7) { animation-delay: .26s; }
   .card > :nth-child(8) { animation-delay: .3s; }
   .brand {
+    font-family: var(--font-d);
     font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
     color: var(--subtle); margin-bottom: 28px;
   }
@@ -315,7 +358,7 @@ async function themePage(url, env) {
   .dot:nth-child(2) { animation-delay: .2s; }
   .dot:nth-child(3) { animation-delay: .28s; }
   .dot:hover { transform: translateY(-5px); }
-  h1 { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+  h1 { margin: 0 0 4px; font-family: var(--font-d); font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
   .author { color: var(--subtle); margin: 0 0 16px; font-size: 14px; }
   .desc { color: var(--chipText); font-size: 15px; line-height: 1.6; margin: 0 0 20px; }
   .chips { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; }
@@ -330,7 +373,7 @@ async function themePage(url, env) {
   .chip svg { display: block; }
   a.btn {
     display: block; padding: 15px 24px; border-radius: 999px; text-decoration: none;
-    font-size: 15px; font-weight: 600;
+    font-family: var(--font-d); font-size: 15px; font-weight: 600;
     transition: filter .15s ease, transform .15s cubic-bezier(.2,.7,.2,1),
                 border-radius .25s cubic-bezier(.2,.7,.2,1), box-shadow .2s ease;
   }
@@ -340,12 +383,13 @@ async function themePage(url, env) {
   .open:hover { box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 35%, transparent); }
   .get { background: var(--tonal); color: var(--onTonalBtn); margin-top: 10px; }
   @media (prefers-reduced-motion: reduce) {
-    .card, .card > *, .dot { animation: none; }
+    .card, .card > *, .dot, .aurora i { animation: none; }
     .dot, .chip, a.btn { transition: none; }
   }
 </style>
 </head>
 <body>
+<div class="aurora" aria-hidden="true"><i></i><i></i></div>
 <main class="card">
   <div class="brand">ColorBlendr Community</div>
   <div class="dots">${swatches}</div>
