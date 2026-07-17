@@ -41,12 +41,16 @@
     --aur-op: .5; --grain-op: .03;
   }
 }
+/* clip (not hidden) on BOTH roots: mobile Chrome/Safari expand the layout
+   viewport past device-width for out-of-flow overflow (the aurora blobs)
+   even with body overflow-x hidden, making the page pannable sideways. */
+html { overflow-x: hidden; overflow-x: clip; }
 body {
   margin: 0; min-height: 100vh;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg); color: var(--text);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: hidden; overflow-x: clip;
   transition: background-color var(--recolor, 1.6s) ease, color var(--recolor, 1.6s) ease;
 }
 
@@ -419,6 +423,25 @@ body::after {
     animation-range: 0 700px;
   }
   @keyframes hero-drift { to { transform: translateY(130px); opacity: .3; } }
+  /* Mobile: the hero stacks into a tall column, so a fixed 700px scroll
+     range fades the phone while it is still mid-screen. Fade copy and
+     phone independently, each only as it exits the top of the viewport.
+     hero-exit keyframes are to-only so they compose with (not override)
+     the entrance `rise` animation earlier in the list. */
+  @media (max-width: 920px) {
+    .hero.split { animation: none; }
+    .hero-copy {
+      animation: hero-exit linear both;
+      animation-timeline: view();
+      animation-range: exit;
+    }
+    .hero-phone {
+      animation: rise .8s cubic-bezier(.2,.7,.2,1) .5s forwards, hero-exit linear both;
+      animation-timeline: auto, view();
+      animation-range: normal, exit;
+    }
+    @keyframes hero-exit { to { opacity: .25; } }
+  }
 }
 
 footer {
