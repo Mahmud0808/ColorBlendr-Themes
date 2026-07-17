@@ -59,6 +59,30 @@
 			type="font/woff2"
 			crossorigin
 		/>
+		<script>
+			// Restore the session palette before first paint so page
+			// switches keep color.
+			try {
+				const t = JSON.parse(sessionStorage.getItem("siteTheme"));
+				if (
+					t &&
+					t.dark ===
+						matchMedia("(prefers-color-scheme: dark)").matches
+				) {
+					for (const k in t.vars)
+						document.documentElement.style.setProperty(
+							k,
+							t.vars[k],
+						);
+					document
+						.querySelector('meta[name="theme-color"]')
+						?.setAttribute("content", t.vars["--bg"]);
+					const s = document.createElement("style");
+					s.textContent = `#lg stop:nth-child(1){stop-color:${t.stops[0]}}#lg stop:nth-child(2){stop-color:${t.stops[1]}}`;
+					document.head.appendChild(s);
+				}
+			} catch {}
+		</script>
 		<link rel="stylesheet" href="assets/site.css?v=4" />
 	</head>
 	<body>
@@ -710,7 +734,7 @@
 		</div>
 
 		<script type="module">
-			import { initHome } from "./assets/site.js?v=3";
+			import { initHome } from "./assets/site.js?v=4";
 			initHome();
 		</script>
 	</body>

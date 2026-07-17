@@ -105,7 +105,7 @@ let isDark = darkQuery.matches;
 const modeHandlers = [];
 darkQuery.addEventListener("change", (e) => {
 	isDark = e.matches;
-	applySiteSeed(restingSeed);
+	persistTheme(applySiteSeed(restingSeed));
 	for (const handler of modeHandlers) handler();
 });
 
@@ -157,31 +157,40 @@ function applySiteSeed(seedHex, style, spec, sliders) {
 		?.setAttribute("content", vars["--bg"]);
 
 	// Hero logo disc follows the seed (launcher gradient formula).
+	const stopColors = [
+		adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(70)), accentSat),
+		adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(40)), accentSat),
+	];
 	const stops = document.querySelectorAll("#lg stop");
 	if (stops.length === 2) {
-		stops[0].style.setProperty(
-			"stop-color",
-			adjustSaturation(
-				hexFromArgb(scheme.primaryPalette.tone(70)),
-				accentSat,
-			),
-		);
-		stops[1].style.setProperty(
-			"stop-color",
-			adjustSaturation(
-				hexFromArgb(scheme.primaryPalette.tone(40)),
-				accentSat,
-			),
-		);
+		stops[0].style.setProperty("stop-color", stopColors[0]);
+		stops[1].style.setProperty("stop-color", stopColors[1]);
 	}
+	return { vars, stops: stopColors };
 }
 
 // Boot color; matches the :root CSS fallbacks so first paint = first seed.
 const INITIAL_SEED = "#51BDFF";
 
 // Seed the site rests on when no card is hovered; rotation moves it.
-let restingSeed = INITIAL_SEED;
+// Persisted per tab with its computed palette; an inline head script on
+// each page restores the vars pre-paint so navigation keeps the color.
+const savedTheme = (() => {
+	try {
+		return JSON.parse(sessionStorage.getItem("siteTheme"));
+	} catch {
+		return null;
+	}
+})();
+let restingSeed = savedTheme?.seed || INITIAL_SEED;
 let hoverHold = false;
+
+function persistTheme(applied) {
+	sessionStorage.setItem(
+		"siteTheme",
+		JSON.stringify({ seed: restingSeed, dark: isDark, ...applied }),
+	);
+}
 
 // Hue spread so the rotation tours the full wheel instead of hovering
 // around whatever hues the catalog happens to contain.
@@ -213,12 +222,12 @@ function startSeedRotation(themes) {
 	}
 	const seeds = [...new Set([INITIAL_SEED, ...merged])];
 	if (seeds.length < 2) return;
-	let i = 0;
+	let i = Math.max(0, seeds.indexOf(restingSeed));
 	setInterval(() => {
 		if (hoverHold) return;
 		i = (i + 1) % seeds.length;
 		restingSeed = seeds[i];
-		applySiteSeed(restingSeed);
+		persistTheme(applySiteSeed(restingSeed));
 	}, 7000);
 }
 
@@ -509,7 +518,7 @@ function initFaq() {
 // ---- Page entry points -------------------------------------------------------
 
 export async function initHome() {
-	applySiteSeed(INITIAL_SEED);
+	persistTheme(applySiteSeed(restingSeed));
 	initReveal();
 	initFaq();
 	initSpotlight();
@@ -567,7 +576,7 @@ export async function initHome() {
 }
 
 export async function initAllThemes() {
-	applySiteSeed(INITIAL_SEED);
+	persistTheme(applySiteSeed(restingSeed));
 	initReveal();
 	initSpotlight();
 	initHoverTheming(document.getElementById("grid"));
