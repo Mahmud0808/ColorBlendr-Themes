@@ -71,7 +71,6 @@ header.hero { position: relative; text-align: center; padding: 96px 0 64px; }
   .hero.split .cta { justify-content: center; }
   .hero.split .tagline { margin: 0 auto 40px; }
   .hero-phone { margin-top: 36px; }
-  .phone { transform: rotate(0deg) scale(.92); }
 }
 
 /* Aurora: blurred seed-tinted blobs behind the hero. The --grad-* vars are
@@ -104,34 +103,36 @@ header.hero { position: relative; text-align: center; padding: 96px 0 64px; }
 
 /* Phone mockup: every surface reads the site vars, so seed rotation and
    card hover re-tint the whole "device". */
+/* Float bobs the wrapper; tilt sits on .phone so hover can transition
+   transform without fighting a running animation for the same property. */
 .hero-phone {
   opacity: 0; transform: translateY(18px); flex-shrink: 0;
-  animation: rise .8s cubic-bezier(.2,.7,.2,1) .5s forwards;
+  animation: rise .8s cubic-bezier(.2,.7,.2,1) .5s forwards,
+             phone-float 7s ease-in-out 1.8s infinite alternate;
   user-select: none; -webkit-user-select: none;
 }
 .phone, .phone * { transition: background-color var(--recolor, 1.6s) ease, color var(--recolor, 1.6s) ease, border-color var(--recolor, 1.6s) ease; }
 .phone {
+  --tilt: -4deg;
   width: 252px; padding: 10px; border-radius: 40px;
-  transform: rotate(-4deg);
+  transform: rotate(var(--tilt)) scale(var(--ph-scale, 1));
   background: var(--card-highest); border: 1px solid var(--outline-v);
   box-shadow: 0 34px 90px -18px var(--accent-glow), 0 26px 60px var(--shadow-card);
-  animation: phone-float 7s ease-in-out 1.8s infinite alternate;
-  transition: background-color var(--recolor, 1.6s) ease, border-color var(--recolor, 1.6s) ease, box-shadow var(--recolor, 1.6s) ease;
+  transition: transform .6s cubic-bezier(.2,.7,.2,1), background-color var(--recolor, 1.6s) ease, border-color var(--recolor, 1.6s) ease, box-shadow var(--recolor, 1.6s) ease;
 }
+.hero-phone:hover .phone { --tilt: 0deg; }
 @keyframes phone-float {
-  from { transform: rotate(-4deg) translateY(0); }
-  to { transform: rotate(-4deg) translateY(-12px); }
+  from { transform: translateY(0); }
+  to { transform: translateY(-12px); }
 }
 @media (max-width: 920px) {
-  @keyframes phone-float {
-    from { transform: rotate(0deg) scale(.92) translateY(0); }
-    to { transform: rotate(0deg) scale(.92) translateY(-12px); }
-  }
+  .phone { --tilt: 0deg; --ph-scale: .92; }
 }
 .p-screen {
   background: var(--bg); border-radius: 31px; padding: 16px 14px 10px;
   display: flex; flex-direction: column; gap: 11px;
   min-height: 480px;
+  text-align: start;
 }
 .p-clockrow { display: flex; justify-content: space-between; align-items: flex-end; padding: 2px 4px 1px; color: var(--body2); }
 .p-sig { display: inline-flex; gap: 4px; padding-bottom: 3px; }
@@ -423,11 +424,8 @@ body::after {
     animation-range: 0 700px;
   }
   @keyframes hero-drift { to { transform: translateY(130px); opacity: .3; } }
-  /* Mobile: the hero stacks into a tall column, so a fixed 700px scroll
-     range fades the phone while it is still mid-screen. Fade copy and
-     phone independently, each only as it exits the top of the viewport.
-     hero-exit keyframes are to-only so they compose with (not override)
-     the entrance `rise` animation earlier in the list. */
+  /* Mobile hero is too tall for the fixed range: fade each part as it
+     exits instead. hero-exit is to-only so it composes with `rise`. */
   @media (max-width: 920px) {
     .hero.split { animation: none; }
     .hero-copy {
@@ -436,9 +434,11 @@ body::after {
       animation-range: exit;
     }
     .hero-phone {
-      animation: rise .8s cubic-bezier(.2,.7,.2,1) .5s forwards, hero-exit linear both;
-      animation-timeline: auto, view();
-      animation-range: normal, exit;
+      animation: rise .8s cubic-bezier(.2,.7,.2,1) .5s forwards,
+                 phone-float 7s ease-in-out 1.8s infinite alternate,
+                 hero-exit linear both;
+      animation-timeline: auto, auto, view();
+      animation-range: normal, normal, exit;
     }
     @keyframes hero-exit { to { opacity: .25; } }
   }
