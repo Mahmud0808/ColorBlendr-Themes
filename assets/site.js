@@ -122,7 +122,12 @@ function applySiteSeed(seedHex, style, spec, sliders) {
 	const accent = (argb) => adjustSaturation(role(argb), accentSat);
 	// Tone floors keep slider-shifted surfaces off pure black + separated.
 	const surf = (argb, minTone, maxTone) =>
-		shiftLightness(adjustSaturation(role(argb), bgSat), bgLight, minTone, maxTone);
+		shiftLightness(
+			adjustSaturation(role(argb), bgSat),
+			bgLight,
+			minTone,
+			maxTone,
+		);
 
 	const vars = {
 		"--bg": surf(scheme.surface, 4, 99),
@@ -156,11 +161,17 @@ function applySiteSeed(seedHex, style, spec, sliders) {
 	if (stops.length === 2) {
 		stops[0].style.setProperty(
 			"stop-color",
-			adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(70)), accentSat),
+			adjustSaturation(
+				hexFromArgb(scheme.primaryPalette.tone(70)),
+				accentSat,
+			),
 		);
 		stops[1].style.setProperty(
 			"stop-color",
-			adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(40)), accentSat),
+			adjustSaturation(
+				hexFromArgb(scheme.primaryPalette.tone(40)),
+				accentSat,
+			),
 		);
 	}
 }
@@ -263,7 +274,8 @@ function cardData(theme) {
 
 	const customPalette = (hex) =>
 		HEX.test(hex ?? "")
-			? new Ctor(Hct.fromInt(argbFromHex(hex)), true, 0, spec).primaryPalette
+			? new Ctor(Hct.fromInt(argbFromHex(hex)), true, 0, spec)
+					.primaryPalette
 			: null;
 	const secondaryPalette =
 		customPalette(theme.secondaryColor) ?? scheme.secondaryPalette;
@@ -296,7 +308,10 @@ function cardData(theme) {
 		center: seed,
 		// Primary tonal run for the hover strip along the card's bottom edge.
 		strip: [95, 85, 70, 55, 40, 25].map((tone) =>
-			adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(tone)), accentSat),
+			adjustSaturation(
+				hexFromArgb(scheme.primaryPalette.tone(tone)),
+				accentSat,
+			),
 		),
 		container: shiftLightness(
 			adjustSaturation(hexFromArgb(scheme.surfaceContainerHigh), bgSat),
@@ -323,21 +338,17 @@ const thumbIcon =
 const downloadIcon =
 	'<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M16.59 9H15V4c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v5H7.41c-.89 0-1.34 1.08-.71 1.71l4.59 4.59c.39.39 1.02.39 1.41 0l4.59-4.59c.63-.63.19-1.71-.7-1.71ZM5 19c0 .55.45 1 1 1h12c.55 0 1-.45 1-1s-.45-1-1-1H6c-.55 0-1 .45-1 1Z"/></svg>';
 
-function cardHtml(theme, countUp = false) {
+function cardHtml(theme) {
 	const c = cardData(theme);
 	const seed = HEX.test(theme.seedColor ?? "") ? theme.seedColor : "";
-	// countUp wraps stats so initCountUps can animate them on reveal;
-	// marquee cards stay plain (each theme appears there multiple times).
-	const num = (value) =>
-		countUp ? `<i class="cnum" data-count="${value}">0</i>` : value;
 	return `<a class="tcard" data-seed="${seed}" data-style="${esc(theme.style ?? "")}" data-spec="${c.spec}" data-asat="${c.accentSat}" data-bsat="${c.bgSat}" data-blight="${c.bgLight}" style="background:${c.container};color:${c.text}" href="${WORKER}/theme/${esc(theme.id)}">
         ${swatchSvg(c)}
         <span class="tinfo">
             <span class="tname">${esc(theme.name)}</span>
             <span class="tauthor" style="color:${c.subtle}">by ${esc(theme.author || "Anonymous")}</span>
             <span class="tstats" style="color:${c.subtle}">
-                <span>${thumbIcon}${num(theme.upvotes ?? 0)}</span>
-                <span>${downloadIcon}${num(theme.downloads ?? 0)}</span>
+                <span>${thumbIcon}${theme.upvotes ?? 0}</span>
+                <span>${downloadIcon}${theme.downloads ?? 0}</span>
             </span>
         </span>
         <span class="pstrip" aria-hidden="true">${c.strip.map((hex) => `<i style="background:${hex}"></i>`).join("")}</span>
@@ -413,7 +424,9 @@ function initCountUps(scope) {
 		},
 		{ threshold: 0.5 },
 	);
-	scope.querySelectorAll("[data-count]").forEach((el) => observer.observe(el));
+	scope
+		.querySelectorAll("[data-count]")
+		.forEach((el) => observer.observe(el));
 }
 
 // Scroll-in reveal for sections below the fold.
@@ -570,9 +583,6 @@ export async function initAllThemes() {
 
 	const search = document.getElementById("search");
 	let sortValue = "trending";
-	// Stats count up on the first render only; re-renders (typing, sorting)
-	// would otherwise replay the animation on every keystroke.
-	let animateStats = true;
 	const render = () => {
 		const query = search.value.trim().toLowerCase();
 		const colorQuery = parseColorQuery(query);
@@ -588,12 +598,8 @@ export async function initAllThemes() {
 			.sort(SORTS[sortValue] ?? SORTS.trending);
 		const grid = document.getElementById("grid");
 		grid.innerHTML = list.length
-			? list.map((t) => cardHtml(t, animateStats)).join("")
+			? list.map((t) => cardHtml(t)).join("")
 			: '<div class="loading">No themes match.</div>';
-		if (animateStats) {
-			initCountUps(grid);
-			animateStats = false;
-		}
 	};
 	search.addEventListener("input", render);
 	modeHandlers.push(render);
@@ -614,8 +620,11 @@ export async function initAllThemes() {
 		const hueToHex = (h) => {
 			const f = (n) => {
 				const k = (n + h / 30) % 12;
-				const c = 0.525 - 0.425 * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-				return Math.round(c * 255).toString(16).padStart(2, "0");
+				const c =
+					0.525 - 0.425 * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+				return Math.round(c * 255)
+					.toString(16)
+					.padStart(2, "0");
 			};
 			return ("#" + f(0) + f(8) + f(4)).toUpperCase();
 		};
@@ -644,7 +653,7 @@ export async function initAllThemes() {
 			const rect = hueWrap.getBoundingClientRect();
 			const dx = e.clientX - (rect.left + rect.width / 2);
 			const dy = e.clientY - (rect.top + rect.height / 2);
-			hue = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+			hue = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
 			applyHue();
 		};
 		hueWrap.addEventListener("pointerdown", (e) => {
@@ -655,7 +664,12 @@ export async function initAllThemes() {
 			if (e.buttons) setFromPointer(e);
 		});
 		hueWheel.addEventListener("keydown", (e) => {
-			const step = { ArrowRight: 4, ArrowUp: 4, ArrowLeft: -4, ArrowDown: -4 }[e.key];
+			const step = {
+				ArrowRight: 4,
+				ArrowUp: 4,
+				ArrowLeft: -4,
+				ArrowDown: -4,
+			}[e.key];
 			if (!step) return;
 			e.preventDefault();
 			hue = (hue + step + 360) % 360;
