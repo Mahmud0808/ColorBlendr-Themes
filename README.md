@@ -6,13 +6,15 @@ Themes are pure data (colors and Material You settings) — nothing executable.
 - `themes/*.json` — one file per theme, schema-validated by CI on every PR
 - `index.json` — auto-built list the app downloads (via jsDelivr CDN), with
   vote and download counts baked in daily
-- `worker/` — Cloudflare Worker handling anonymous votes and in-app uploads
+- `worker/` — Cloudflare Worker handling anonymous votes, in-app uploads
+  (queued for owner approval), and the admin review endpoints
 - `scripts/` — CI validation and index builder
 
 ## Submitting a theme
 
-Use **Share current theme** inside the ColorBlendr app (opens a pull request
-here automatically), or open a PR adding a `themes/<id>.json` file by hand.
+Use **Share current theme** inside the ColorBlendr app, or open a PR adding a
+`themes/<id>.json` file by hand. In-app submissions land in a private review
+queue first; only ones the maintainer approves become pull requests here.
 Every submission is human-reviewed before merge.
 
 ## One-time setup (maintainer)
@@ -49,7 +51,14 @@ Every submission is human-reviewed before merge.
    ```
    wrangler secret put GITHUB_TOKEN
    ```
-6. Deploy:
+6. Admin key (authorizes the ColorBlendr Dev review app; generate a strong
+   one and keep it in your password manager — rerun the same command anytime
+   to rotate it):
+   ```
+   openssl rand -hex 32
+   wrangler secret put ADMIN_KEY
+   ```
+7. Deploy:
    ```
    wrangler deploy
    ```
@@ -67,7 +76,21 @@ Every submission is human-reviewed before merge.
 
 ## Moderation
 
-- PRs from the app are opened by your bot token and labeled by CI as
-  schema-valid; you review the colors and merge.
+- In-app submissions sit in the worker's private queue — nothing appears on
+  GitHub until approved. Review them with the **ColorBlendr Dev** companion
+  app (`devapp` module in the ColorBlendr repo): enter the admin key once,
+  then preview (tap a card to copy its config for the main app's theme
+  tester), approve, or reject. Approving opens the PR via the bot token.
+- Curl fallback: `curl -H "x-admin-key: KEY" <worker-url>/admin/pending`,
+  then POST `{"id": "..."}` to `/admin/approve` or `/admin/reject`.
+- Abusive uploaders can be blocked permanently (and unblocked) from the Dev
+  app — identity is the anonymous salted device hash also used for votes,
+  with a reason and date stored so blocks stay identifiable; raw device IDs
+  and IP addresses are never stored anywhere.
+- Admin auth is brute-force hardened: 256-bit key, constant-time comparison,
+  and a lockout of 5 failed attempts per hour keyed by a salted IP hash
+  (raw IPs are never stored).
+- Approved PRs are validated by CI as schema-valid; you review the colors
+  and merge.
 - To remove a theme: delete its file — the next index build drops it and the
   app stops showing it.

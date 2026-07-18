@@ -57,7 +57,7 @@ const SHADE_STEPS = ["0", "10", "50", "100", "200", "300", "400", "500",
 const VALID_SHADES = new Set(
     SHADE_ROWS.flatMap((row) => SHADE_STEPS.map((step) => `${row}_${step}`))
 );
-const MAX_UPLOADS_PER_DAY_PER_IP = 3;
+const MAX_UPLOADS_PER_DAY = 3;
 
 export default {
     async fetch(request, env) {
@@ -77,6 +77,9 @@ export default {
             }
             if (request.method === "POST" && url.pathname === "/upload") {
                 return await upload(request, env);
+            }
+            if (url.pathname.startsWith("/admin/")) {
+                return await admin(request, url, env);
             }
             if (request.method === "POST" && url.pathname === "/report") {
                 return await report(request, env);
@@ -591,41 +594,174 @@ function slugify(name) {
 }
 
 async function upload(request, env) {
-    const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
     const body = await request.json().catch(() => null);
 
+    // Same salted SSAID hash as votes; raw identity never stored.
+    const device = body?.device;
+    if (!DEVICE_REGEX.test(device ?? "")) return json({ error: "bad request" }, 400);
+
+    const blocked = await env.DB
+        .prepare("SELECT 1 FROM blocked_devices WHERE device = ?")
+        .bind(device).first();
+    if (blocked) return json({ error: "forbidden" }, 403);
+
     const token = body?.turnstileToken;
-    if (!token || !(await verifyTurnstile(token, ip, env))) {
+    if (!token || !(await verifyTurnstile(token, env))) {
         return json({ error: "verification failed" }, 403);
     }
 
     const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
     const recent = await env.DB
-        .prepare("SELECT COUNT(*) AS c FROM uploads WHERE ip = ? AND created > ?")
-        .bind(ip, dayAgo).first();
-    if ((recent?.c ?? 0) >= MAX_UPLOADS_PER_DAY_PER_IP) {
+        .prepare("SELECT COUNT(*) AS c FROM uploads WHERE device = ? AND created > ?")
+        .bind(device, dayAgo).first();
+    if ((recent?.c ?? 0) >= MAX_UPLOADS_PER_DAY) {
         return json({ error: "rate limited" }, 429);
     }
 
     const payload = validatePayload(body?.payload);
     if (!payload) return json({ error: "invalid theme" }, 400);
 
+    // Queue only — nothing reaches GitHub until /admin/approve.
     const id = slugify(payload.name);
-    const themeJson = JSON.stringify({ id, ...payload, createdAt: Math.floor(Date.now() / 1000) }, null, 2);
-    const prUrl = await openPullRequest(env, id, payload.name, themeJson);
-    if (!prUrl) return json({ error: "github error" }, 502);
+    await env.DB.prepare(
+        "INSERT INTO pending (id, name, author, payload, device, created) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(id, payload.name, payload.author ?? "", JSON.stringify(payload), device, Date.now())
+        .run();
 
-    await env.DB.prepare("INSERT INTO uploads (ip, created) VALUES (?, ?)")
-        .bind(ip, Date.now()).run();
+    await env.DB.prepare("INSERT INTO uploads (device, created) VALUES (?, ?)")
+        .bind(device, Date.now()).run();
 
-    return json({ prUrl });
+    return json({ queued: true });
 }
 
-async function verifyTurnstile(token, ip, env) {
+const MAX_ADMIN_FAILURES_PER_HOUR = 5;
+
+async function hashIp(ip) {
+    const data = new TextEncoder().encode(`${ip}colorblendr-ip-v1`);
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return [...new Uint8Array(digest)]
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Constant-time key comparison; equal length required by timingSafeEqual.
+function adminKeyMatches(candidate, secret) {
+    if (!candidate || !secret) return false;
+    const enc = new TextEncoder();
+    const a = enc.encode(candidate);
+    const b = enc.encode(secret);
+    if (a.byteLength !== b.byteLength) return false;
+    return crypto.subtle.timingSafeEqual(a, b);
+}
+
+// Owner-only queue review. Auth = x-admin-key header vs ADMIN_KEY secret
+// (generate with `openssl rand -hex 32`; never ships in the app or either
+// repo). Brute force is dead on arrival: 256-bit key space + 5 failed
+// attempts/hour/IP lockout + constant-time compare.
+async function admin(request, url, env) {
+    const ipHash = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
+    const hourAgo = Date.now() - 60 * 60 * 1000;
+    const failures = await env.DB
+        .prepare("SELECT COUNT(*) AS c FROM admin_attempts WHERE ip = ? AND created > ?")
+        .bind(ipHash, hourAgo).first();
+    if ((failures?.c ?? 0) >= MAX_ADMIN_FAILURES_PER_HOUR) {
+        return json({ error: "too many attempts" }, 429);
+    }
+
+    const key = request.headers.get("x-admin-key");
+    if (!adminKeyMatches(key, env.ADMIN_KEY)) {
+        await env.DB
+            .prepare("INSERT INTO admin_attempts (ip, created) VALUES (?, ?)")
+            .bind(ipHash, Date.now()).run();
+        await env.DB
+            .prepare("DELETE FROM admin_attempts WHERE created < ?")
+            .bind(Date.now() - 24 * 60 * 60 * 1000).run();
+        return json({ error: "unauthorized" }, 401);
+    }
+
+    if (request.method === "GET" && url.pathname === "/admin/pending") {
+        const rows = await env.DB
+            .prepare("SELECT id, name, author, payload, device, created FROM pending ORDER BY created")
+            .all();
+        return json({
+            pending: (rows.results ?? []).map((r) => ({
+                id: r.id,
+                name: r.name,
+                author: r.author,
+                device: r.device,
+                created: r.created,
+                payload: JSON.parse(r.payload)
+            }))
+        });
+    }
+
+    if (request.method === "GET" && url.pathname === "/admin/blocked") {
+        const rows = await env.DB
+            .prepare("SELECT device, reason, created FROM blocked_devices ORDER BY created DESC")
+            .all();
+        return json({ blocked: rows.results ?? [] });
+    }
+
+    // Block also drops every queued submission from that device. reason
+    // keeps the offender identifiable after the queue rows are gone.
+    if (request.method === "POST" && url.pathname === "/admin/block") {
+        const body = await request.json().catch(() => null);
+        const target = body?.device;
+        if (!DEVICE_REGEX.test(target ?? "")) return json({ error: "bad request" }, 400);
+        const reason = clean(body?.reason ?? "", 200) ?? "";
+
+        await env.DB.prepare(
+            "INSERT OR IGNORE INTO blocked_devices (device, reason, created) VALUES (?, ?, ?)")
+            .bind(target, reason, Date.now()).run();
+        await env.DB.prepare("DELETE FROM pending WHERE device = ?").bind(target).run();
+        return json({ blocked: true });
+    }
+
+    if (request.method === "POST" && url.pathname === "/admin/unblock") {
+        const body = await request.json().catch(() => null);
+        const target = body?.device;
+        if (!DEVICE_REGEX.test(target ?? "")) return json({ error: "bad request" }, 400);
+
+        await env.DB.prepare("DELETE FROM blocked_devices WHERE device = ?").bind(target).run();
+        return json({ unblocked: true });
+    }
+
+    if (request.method === "POST" && url.pathname === "/admin/approve") {
+        const body = await request.json().catch(() => null);
+        const id = body?.id;
+        if (!ID_REGEX.test(id ?? "")) return json({ error: "bad request" }, 400);
+
+        const row = await env.DB
+            .prepare("SELECT name, payload FROM pending WHERE id = ?")
+            .bind(id).first();
+        if (!row) return json({ error: "not found" }, 404);
+
+        const payload = JSON.parse(row.payload);
+        const themeJson = JSON.stringify(
+            { id, ...payload, createdAt: Math.floor(Date.now() / 1000) }, null, 2);
+        const prUrl = await openPullRequest(env, id, row.name, themeJson);
+        if (!prUrl) return json({ error: "github error" }, 502);
+
+        await env.DB.prepare("DELETE FROM pending WHERE id = ?").bind(id).run();
+        return json({ prUrl });
+    }
+
+    if (request.method === "POST" && url.pathname === "/admin/reject") {
+        const body = await request.json().catch(() => null);
+        const id = body?.id;
+        if (!ID_REGEX.test(id ?? "")) return json({ error: "bad request" }, 400);
+
+        await env.DB.prepare("DELETE FROM pending WHERE id = ?").bind(id).run();
+        return json({ rejected: true });
+    }
+
+    return json({ error: "not found" }, 404);
+}
+
+async function verifyTurnstile(token, env) {
     const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: token, remoteip: ip })
+        body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: token })
     });
     const result = await response.json().catch(() => null);
     return result?.success === true;
