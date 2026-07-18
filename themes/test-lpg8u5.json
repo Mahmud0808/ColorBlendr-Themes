@@ -1,0 +1,17 @@
+{
+  "id": "test-lpg8u5",
+  "schemaVersion": 1,
+  "name": "test",
+  "description": "drd",
+  "author": "abc",
+  "style": "TONAL_SPOT",
+  "seedColor": "#326D8E",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1784366623
+}
