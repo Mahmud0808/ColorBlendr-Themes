@@ -578,6 +578,11 @@ async function vote(request, env) {
 		return json({ error: "bad request" }, 400);
 	}
 
+	// Only real themes get rows, so votes can't be inflated for fake ids.
+	if (!(await themeExists(themeId, env))) {
+		return json({ error: "not found" }, 404);
+	}
+
 	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
 
 	// Identity = device OR ip, so a VPN (new ip, same device) and device
@@ -631,6 +636,11 @@ async function download(request, env) {
 	const device = body?.device;
 	if (!ID_REGEX.test(themeId ?? "") || !DEVICE_REGEX.test(device ?? "")) {
 		return json({ error: "bad request" }, 400);
+	}
+
+	// Only real themes get rows, so downloads can't be inflated for fake ids.
+	if (!(await themeExists(themeId, env))) {
+		return json({ error: "not found" }, 404);
 	}
 
 	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
@@ -826,6 +836,12 @@ async function upload(request, env) {
 		"INSERT INTO uploads (device, ip, created) VALUES (?, ?, ?)",
 	)
 		.bind(device, ip, Date.now())
+		.run();
+
+	// uploads is a pure 24h rate-limit ledger; drop rows past the window so
+	// device/IP rotation spam can't grow the table without bound.
+	await env.DB.prepare("DELETE FROM uploads WHERE created < ?")
+		.bind(dayAgo)
 		.run();
 
 	return json({ queued: true });
