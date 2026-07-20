@@ -1,35 +1,50 @@
+-- Identity on community writes is device (salted SSAID hash) plus ip
+-- (salted SHA-256 of the connecting IP). A returning voter/uploader is
+-- matched if EITHER hash is already seen, so a VPN (new ip, same device)
+-- and device rotation (same ip, new device) both fail to double-act.
+-- Neither raw SSAID nor raw IP is ever stored.
 CREATE TABLE IF NOT EXISTS votes (
     theme_id TEXT NOT NULL,
     device TEXT NOT NULL,
+    ip TEXT NOT NULL DEFAULT '',
     created INTEGER NOT NULL,
     PRIMARY KEY (theme_id, device)
 );
 
 CREATE INDEX IF NOT EXISTS idx_votes_device ON votes (device);
+CREATE INDEX IF NOT EXISTS idx_votes_ip ON votes (theme_id, ip);
 
--- Rolling upload throttle per device hash.
+-- Rolling upload throttle per device/ip hash.
 CREATE TABLE IF NOT EXISTS uploads (
     device TEXT NOT NULL,
+    ip TEXT NOT NULL DEFAULT '',
     created INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploads_device ON uploads (device, created);
+CREATE INDEX IF NOT EXISTS idx_uploads_ip ON uploads (ip, created);
 
--- One "download" per device per theme, recorded when a theme is applied.
+-- One "download" per device/ip per theme, recorded when a theme is applied.
 CREATE TABLE IF NOT EXISTS applies (
     theme_id TEXT NOT NULL,
     device TEXT NOT NULL,
+    ip TEXT NOT NULL DEFAULT '',
     created INTEGER NOT NULL,
     PRIMARY KEY (theme_id, device)
 );
 
--- One report per device per theme; first report opens a GitHub issue.
+CREATE INDEX IF NOT EXISTS idx_applies_ip ON applies (theme_id, ip);
+
+-- One report per device/ip per theme; first report opens a GitHub issue.
 CREATE TABLE IF NOT EXISTS reports (
     theme_id TEXT NOT NULL,
     device TEXT NOT NULL,
+    ip TEXT NOT NULL DEFAULT '',
     created INTEGER NOT NULL,
     PRIMARY KEY (theme_id, device)
 );
+
+CREATE INDEX IF NOT EXISTS idx_reports_ip ON reports (theme_id, ip);
 
 -- Failed admin auth attempts per salted IP hash; drives the lockout.
 CREATE TABLE IF NOT EXISTS admin_attempts (

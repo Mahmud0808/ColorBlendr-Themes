@@ -1,7 +1,7 @@
 // ColorBlendr community themes worker.
 // Endpoints:
-//   POST /vote     { themeId, device }           -> { voted, upvotes }
-//   POST /download { themeId, device }           -> { downloads }
+//   POST /vote     { themeId, device }           -> { voted, upvotes }  (dedup device|ip)
+//   POST /download { themeId, device }           -> { downloads }       (dedup device|ip)
 //   GET  /votes?device=<hash>                    -> { themeIds: [...] }
 //   GET  /counts                                 -> { upvotes: {id: n}, downloads: {id: n} }
 //   POST /upload   { payload, turnstileToken }   -> { prUrl }
@@ -85,6 +85,7 @@ const VALID_SHADES = new Set(
 	SHADE_ROWS.flatMap((row) => SHADE_STEPS.map((step) => `${row}_${step}`)),
 );
 const MAX_UPLOADS_PER_DAY = 3;
+const MAX_REPORTS_PER_DAY = 3;
 
 export default {
 	async fetch(request, env) {
@@ -140,17 +141,32 @@ async function report(request, env) {
 		return json({ error: "not found" }, 404);
 	}
 
-	const existing = await env.DB.prepare(
-		"SELECT 1 FROM reports WHERE theme_id = ? AND device = ?",
+	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
+
+	// Rate limit across all themes by device OR ip so neither device
+	// rotation nor a VPN unlocks unlimited reports.
+	const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+	const recent = await env.DB.prepare(
+		"SELECT COUNT(*) AS c FROM reports WHERE (device = ? OR ip = ?) AND created > ?",
 	)
-		.bind(themeId, device)
+		.bind(device, ip, dayAgo)
+		.first();
+	if ((recent?.c ?? 0) >= MAX_REPORTS_PER_DAY) {
+		return json({ error: "rate limited" }, 429);
+	}
+
+	// Same identity (device OR ip) reports a theme at most once.
+	const existing = await env.DB.prepare(
+		"SELECT 1 FROM reports WHERE theme_id = ? AND (device = ? OR ip = ?)",
+	)
+		.bind(themeId, device, ip)
 		.first();
 	if (existing) return json({ reported: true });
 
 	await env.DB.prepare(
-		"INSERT INTO reports (theme_id, device, created) VALUES (?, ?, ?)",
+		"INSERT INTO reports (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
 	)
-		.bind(themeId, device, Date.now())
+		.bind(themeId, device, ip, Date.now())
 		.run();
 
 	const count = await env.DB.prepare(
@@ -562,23 +578,27 @@ async function vote(request, env) {
 		return json({ error: "bad request" }, 400);
 	}
 
+	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
+
+	// Identity = device OR ip, so a VPN (new ip, same device) and device
+	// rotation (same ip, new device) both resolve to the existing vote.
 	const existing = await env.DB.prepare(
-		"SELECT 1 FROM votes WHERE theme_id = ? AND device = ?",
+		"SELECT 1 FROM votes WHERE theme_id = ? AND (device = ? OR ip = ?)",
 	)
-		.bind(themeId, device)
+		.bind(themeId, device, ip)
 		.first();
 
 	if (existing) {
 		await env.DB.prepare(
-			"DELETE FROM votes WHERE theme_id = ? AND device = ?",
+			"DELETE FROM votes WHERE theme_id = ? AND (device = ? OR ip = ?)",
 		)
-			.bind(themeId, device)
+			.bind(themeId, device, ip)
 			.run();
 	} else {
 		await env.DB.prepare(
-			"INSERT INTO votes (theme_id, device, created) VALUES (?, ?, ?)",
+			"INSERT INTO votes (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
 		)
-			.bind(themeId, device, Date.now())
+			.bind(themeId, device, ip, Date.now())
 			.run();
 	}
 
@@ -613,11 +633,21 @@ async function download(request, env) {
 		return json({ error: "bad request" }, 400);
 	}
 
-	await env.DB.prepare(
-		"INSERT OR IGNORE INTO applies (theme_id, device, created) VALUES (?, ?, ?)",
+	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
+
+	// One download per identity (device OR ip) per theme.
+	const existing = await env.DB.prepare(
+		"SELECT 1 FROM applies WHERE theme_id = ? AND (device = ? OR ip = ?)",
 	)
-		.bind(themeId, device, Date.now())
-		.run();
+		.bind(themeId, device, ip)
+		.first();
+	if (!existing) {
+		await env.DB.prepare(
+			"INSERT INTO applies (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
+		)
+			.bind(themeId, device, ip, Date.now())
+			.run();
+	}
 
 	const count = await env.DB.prepare(
 		"SELECT COUNT(*) AS c FROM applies WHERE theme_id = ?",
@@ -763,11 +793,12 @@ async function upload(request, env) {
 		return json({ error: "verification failed" }, 403);
 	}
 
+	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
 	const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
 	const recent = await env.DB.prepare(
-		"SELECT COUNT(*) AS c FROM uploads WHERE device = ? AND created > ?",
+		"SELECT COUNT(*) AS c FROM uploads WHERE (device = ? OR ip = ?) AND created > ?",
 	)
-		.bind(device, dayAgo)
+		.bind(device, ip, dayAgo)
 		.first();
 	if ((recent?.c ?? 0) >= MAX_UPLOADS_PER_DAY) {
 		return json({ error: "rate limited" }, 429);
@@ -791,8 +822,10 @@ async function upload(request, env) {
 		)
 		.run();
 
-	await env.DB.prepare("INSERT INTO uploads (device, created) VALUES (?, ?)")
-		.bind(device, Date.now())
+	await env.DB.prepare(
+		"INSERT INTO uploads (device, ip, created) VALUES (?, ?, ?)",
+	)
+		.bind(device, ip, Date.now())
 		.run();
 
 	return json({ queued: true });

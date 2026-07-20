@@ -6,7 +6,7 @@ Themes are pure data (colors and Material You settings) — nothing executable.
 - `themes/*.json` — one file per theme, schema-validated by CI on every PR
 - `index.json` — auto-built list the app downloads (via jsDelivr CDN), with
   vote and download counts baked in daily
-- `worker/` — Cloudflare Worker handling anonymous votes, in-app uploads
+- `worker/` — Cloudflare Worker handling votes, in-app uploads
   (queued for owner approval), and the admin review endpoints
 - `scripts/` — CI validation and index builder
 
@@ -85,8 +85,12 @@ Every submission is human-reviewed before merge.
   then POST `{"id": "..."}` to `/admin/approve` or `/admin/reject`.
 - Abusive uploaders can be blocked permanently (and unblocked) from the Dev
   app — identity is the anonymous salted device hash also used for votes,
-  with a reason and date stored so blocks stay identifiable; raw device IDs
-  and IP addresses are never stored anywhere.
+  with a reason and date stored so blocks stay identifiable.
+- Votes, downloads, uploads, and reports are de-duplicated and rate-limited
+  by two anonymous salted hashes together — the device (SSAID) hash and a
+  SHA-256 hash of the request IP — so a VPN or a reset device can't stack
+  votes or dodge limits. Neither the raw device ID nor the raw IP address is
+  ever stored; only the salted hashes are.
 - Admin auth is brute-force hardened: 256-bit key, constant-time comparison,
   and a lockout of 5 failed attempts per hour keyed by a salted IP hash
   (raw IPs are never stored).
