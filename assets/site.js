@@ -571,7 +571,7 @@ export async function initHome() {
 		}
 	} catch {
 		document.getElementById("rail").innerHTML =
-			'<div class="loading">Could not load themes right now.</div>';
+			'<div class="loading" role="status">Couldn\'t load creations. Check your connection, then reload the page.</div>';
 	}
 }
 
@@ -586,7 +586,7 @@ export async function initAllThemes() {
 		startSeedRotation(themes);
 	} catch {
 		document.getElementById("grid").innerHTML =
-			'<div class="loading">Could not load themes right now.</div>';
+			'<div class="loading" role="status">Couldn\'t load creations. Check your connection, then reload the page.</div>';
 		return;
 	}
 
@@ -608,7 +608,14 @@ export async function initAllThemes() {
 		const grid = document.getElementById("grid");
 		grid.innerHTML = list.length
 			? list.map((t) => cardHtml(t)).join("")
-			: '<div class="loading">No themes match.</div>';
+			: '<div class="loading">No creations match that search. Try another name, author, or color.</div>';
+		// Grid itself is too noisy to make live; announce the count instead.
+		const status = document.getElementById("gridStatus");
+		if (status) {
+			status.textContent = list.length
+				? `${list.length} creation${list.length === 1 ? "" : "s"} shown.`
+				: "No creations match that search.";
+		}
 	};
 	search.addEventListener("input", render);
 	modeHandlers.push(render);
@@ -710,9 +717,11 @@ export async function initAllThemes() {
 	const sortLabel = document.getElementById("sortLabel");
 	const items = [...sortMenu.querySelectorAll(".menuitem")];
 	const syncSelected = () =>
-		items.forEach((item) =>
-			item.classList.toggle("selected", item.dataset.value === sortValue),
-		);
+		items.forEach((item) => {
+			const on = item.dataset.value === sortValue;
+			item.classList.toggle("selected", on);
+			item.setAttribute("aria-selected", String(on));
+		});
 	const setOpen = (open) => {
 		sortMenu.hidden = !open;
 		menuwrap.classList.toggle("open", open);

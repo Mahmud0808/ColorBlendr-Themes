@@ -6,7 +6,7 @@
 		<meta name="theme-color" content="#0b0f11" />
 		<meta
 			name="description"
-			content="Material You themes crafted and shared by the ColorBlendr community. Browse, vote, and apply them straight from the ColorBlendr app on Android 12+."
+			content="Material You themes made and shared by the ColorBlendr community. Browse, vote, and apply them straight from the ColorBlendr app on Android 12+."
 		/>
 		<link
 			rel="canonical"
@@ -15,7 +15,7 @@
 		<meta property="og:title" content="ColorBlendr Community Themes" />
 		<meta
 			property="og:description"
-			content="Material You themes crafted and shared by the ColorBlendr community."
+			content="Material You themes made and shared by the ColorBlendr community."
 		/>
 		<meta property="og:type" content="website" />
 		<meta
@@ -31,7 +31,7 @@
 		<meta name="twitter:title" content="ColorBlendr Community Themes" />
 		<meta
 			name="twitter:description"
-			content="Material You themes crafted and shared by the ColorBlendr community."
+			content="Material You themes made and shared by the ColorBlendr community."
 		/>
 		<meta
 			name="twitter:image"
@@ -43,7 +43,7 @@
 				"@type": "WebSite",
 				"name": "ColorBlendr Community Themes",
 				"url": "https://mahmud0808.github.io/ColorBlendr-Themes/",
-				"description": "Material You themes crafted and shared by the ColorBlendr community."
+				"description": "Material You themes made and shared by the ColorBlendr community."
 			}
 		</script>
 		<title>ColorBlendr Community Themes</title>
@@ -60,6 +60,7 @@
 			crossorigin
 		/>
 		<script>
+			document.documentElement.classList.add("js");
 			// Restore the session palette before first paint so page
 			// switches keep color.
 			try {
@@ -83,7 +84,7 @@
 				}
 			} catch {}
 		</script>
-		<link rel="stylesheet" href="assets/site.css?v=4" />
+		<link rel="stylesheet" href="assets/site.css?v=5" />
 	</head>
 	<body>
 		<div class="wrap">
@@ -117,7 +118,7 @@
 					</svg>
 					<h1 class="title">ColorBlendr Community</h1>
 					<p class="tagline">
-						Material You themes crafted and shared by the community.
+						Material You themes made and shared by the community.
 						Browse, vote, and apply them straight from the
 						ColorBlendr app.
 					</p>
@@ -241,7 +242,7 @@
 			</header>
 		</div>
 
-		<h2 class="section-title reveal">Trending creations</h2>
+		<h2 class="section-title">Trending creations</h2>
 		<div id="rail" class="marquee">
 			<div class="sk-row">
 				<div class="sk-card">
@@ -333,13 +334,12 @@
 				>
 			</div>
 
-			<div class="shape shape-a" aria-hidden="true"></div>
-			<h2 class="section-title reveal">How it works</h2>
+			<h2 class="section-title">How it works</h2>
 			<div class="grid">
 				<div class="info reveal">
 					<h3>Create</h3>
 					<p>
-						Craft your palette in ColorBlendr — seed colors, Monet
+						Build your palette in ColorBlendr: seed colors, Monet
 						styles, saturation, per-shade overrides.
 					</p>
 				</div>
@@ -359,13 +359,13 @@
 				</div>
 			</div>
 
-			<h2 class="section-title reveal">Under the hood</h2>
+			<h2 class="section-title">Under the hood</h2>
 			<div class="lead reveal">
 				<p>
 					Android 12 introduced Monet: the system derives a tonal
 					palette from your wallpaper and locks you out of the rest.
 					ColorBlendr works at the layer underneath. It builds its
-					palettes on-device — six tonal rows, thirteen shades each —
+					palettes on-device (six tonal rows, thirteen shades each)
 					and injects them at runtime through the
 					<code>FabricatedOverlay</code> API or the system's theme
 					customization settings. No APK overlays are compiled. No
@@ -378,7 +378,7 @@
 					edits in memory; commit applies the overlay, discard drops
 					it. The engine re-applies your configuration on boot,
 					wallpaper change, and dark-mode switches through
-					event-driven broadcast receivers — there is no polling loop.
+					event-driven broadcast receivers. Nothing polls.
 				</p>
 			</div>
 			<div class="grid">
@@ -396,7 +396,7 @@
 					<h3>Root</h3>
 					<p>
 						The full engine. Fabricated overlays register directly
-						with the system's overlay service — palette changes land
+						with the system's overlay service, so palette changes land
 						instantly, without reboot.
 					</p>
 					<ul class="caps">
@@ -427,7 +427,7 @@
 					<ul class="caps">
 						<li>Rootless system-wide palette control</li>
 						<li>Any seed color and Monet style</li>
-						<li>Survives reboots — settings are persistent</li>
+						<li>Survives reboots; settings persist</li>
 						<li>Setup once per boot via the Shizuku app</li>
 					</ul>
 				</div>
@@ -457,7 +457,7 @@
 				</div>
 			</div>
 
-			<h2 class="section-title reveal">How it compares</h2>
+			<h2 class="section-title">How it compares</h2>
 			<div class="tablewrap reveal">
 				<table class="compare">
 					<thead>
@@ -479,7 +479,7 @@
 						</tr>
 						<tr>
 							<th>Works without root</th>
-							<td>Yes — Shizuku or Wireless ADB</td>
+							<td>Yes, via Shizuku or Wireless ADB</td>
 							<td>Yes</td>
 							<td>Yes</td>
 							<td>Mostly no<sup>1</sup></td>
@@ -494,7 +494,7 @@
 						<tr>
 							<th>Per-shade manual overriding</th>
 							<td>
-								Yes — 5 rows &times; 11 editable tones<sup
+								Yes, 5 rows &times; 11 editable tones<sup
 									>2</sup
 								>
 							</td>
@@ -518,14 +518,14 @@
 						</tr>
 						<tr>
 							<th>Storage footprint</th>
-							<td>None — overlays fabricated in memory</td>
+							<td>None; overlays are fabricated in memory</td>
 							<td>None</td>
 							<td>None</td>
 							<td>APK per overlay, accumulates</td>
 						</tr>
 						<tr>
 							<th>Survives OS updates</th>
-							<td>Yes — re-applies from saved config</td>
+							<td>Yes, re-applies from saved config</td>
 							<td>Yes</td>
 							<td>Yes</td>
 							<td>Frequently breaks, needs rebuilds</td>
@@ -555,8 +555,7 @@
 				</div>
 			</div>
 
-			<div class="shape shape-b" aria-hidden="true"></div>
-			<h2 class="section-title reveal">Power-user FAQ</h2>
+			<h2 class="section-title">Power-user FAQ</h2>
 			<div class="faq reveal">
 				<details>
 					<summary>
@@ -613,8 +612,8 @@
 						<p>
 							OneUI's system apps read from Samsung's own palette
 							pipeline, not Monet. ColorBlendr replaces the Monet
-							palette, so every app that honors Material You —
-							Google apps, most modern third-party apps — follows
+							palette, so every app that honors Material You
+							(Google apps, most modern third-party apps) follows
 							it. Samsung's own UI ignores Monet by design, and no
 							overlay-based tool can change that without modifying
 							Samsung's framework itself.
@@ -642,7 +641,7 @@
 							The service exists to keep broadcast receivers
 							alive; it reacts to wallpaper changes, boot, and
 							dark-mode switches. There is no polling. Between
-							events it is idle — scheduling cost only.
+							events it is idle. Scheduling cost only.
 						</p>
 						<p>
 							Live preview never touches the system at all: it
@@ -705,8 +704,8 @@
 					<div class="answer">
 						<p>
 							Submitting a theme uploads only the color
-							specification plus the name and description you type
-							— reviewed by a human as a public pull request
+							specification plus the name and description you
+							type. A human reviews it as a public pull request
 							before it appears. Voting needs duplicate
 							protection, so the app sends a one-way SHA-256 hash
 							of the device identifier with an app-specific salt.
@@ -716,8 +715,8 @@
 						</p>
 						<p>
 							No accounts, no analytics, no advertising
-							identifiers. The entire pipeline — repository,
-							review process, serving infrastructure — is public.
+							identifiers. The entire pipeline is public:
+							repository, review process, serving infrastructure.
 						</p>
 					</div>
 				</details>
@@ -734,7 +733,7 @@
 		</div>
 
 		<script type="module">
-			import { initHome } from "./assets/site.js?v=4";
+			import { initHome } from "./assets/site.js?v=5";
 			initHome();
 		</script>
 	</body>

@@ -379,11 +379,11 @@ async function themePage(url, env) {
 <style>
   :root {
     ${cssVars(dark.colors)}
-    --aurOp: .3; --grainOp: .045; --glow: 16%;
+    --aurOp: .3; --glow: 16%;
     --font-d: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   @media (prefers-color-scheme: light) {
-    :root { ${cssVars(lightMode.colors)} --aurOp: .5; --grainOp: .03; --glow: 28%; }
+    :root { ${cssVars(lightMode.colors)} --aurOp: .5; --glow: 28%; }
   }
   /* Same display face as the gallery site; GitHub Pages serves it with
      CORS enabled, so the cross-origin font load is allowed. */
@@ -403,7 +403,7 @@ async function themePage(url, env) {
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
-  /* Aurora + film grain, mirroring the gallery site's backdrop. */
+  /* Aurora, mirroring the gallery site's backdrop. */
   .aurora {
     position: fixed; inset: -20%; z-index: 0; pointer-events: none;
     filter: blur(90px); opacity: var(--aurOp);
@@ -421,12 +421,6 @@ async function themePage(url, env) {
   }
   @keyframes aur-a { to { transform: translate(10vmax, 6vmax) scale(1.15); } }
   @keyframes aur-b { to { transform: translate(-9vmax, -5vmax) scale(.9); } }
-  body::after {
-    content: ""; position: fixed; inset: 0; z-index: 2; pointer-events: none;
-    opacity: var(--grainOp);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-size: 160px 160px;
-  }
   @keyframes rise {
     from { opacity: 0; transform: translateY(18px) scale(.98); }
     to { opacity: 1; transform: none; }
@@ -466,7 +460,7 @@ async function themePage(url, env) {
   .dot {
     display: inline-block; width: 64px; height: 64px; border-radius: 50%;
     margin: 0 -10px; border: 4px solid var(--card);
-    animation: pop .55s cubic-bezier(.34,1.56,.64,1) backwards;
+    animation: pop .55s cubic-bezier(.2,.7,.2,1) backwards;
     transition: transform .25s cubic-bezier(.2,.7,.2,1);
   }
   .dot:nth-child(1) { animation-delay: .12s; }
