@@ -74,6 +74,172 @@ function shiftLightness(hex, lightness, minTone = 0, maxTone = 100) {
 	return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
 }
 
+// ---- Shade overrides --------------------------------------------------------
+
+// colorOverrides keys are Android palette resources, system_<row>_<step>.
+// Steps are fixed tonal stops; MCU roles land between them (dark surface is
+// tone 6, surfaceContainer 12), so overrides act as hue/chroma anchors and
+// the role keeps its own tone. Exact stops are used verbatim.
+const STEP_TONE = {
+	0: 100,
+	10: 99,
+	50: 95,
+	100: 90,
+	200: 80,
+	300: 70,
+	400: 60,
+	500: 50,
+	600: 40,
+	700: 30,
+	800: 20,
+	900: 10,
+	1000: 0,
+};
+
+const ROW_PALETTE = {
+	system_accent1: "primaryPalette",
+	system_accent2: "secondaryPalette",
+	system_accent3: "tertiaryPalette",
+	system_neutral1: "neutralPalette",
+	system_neutral2: "neutralVariantPalette",
+};
+
+// MCU role -> the Android palette row the app draws it from.
+const ROLE_ROW = {
+	surface: "system_neutral1",
+	surfaceContainer: "system_neutral1",
+	surfaceContainerHigh: "system_neutral1",
+	surfaceContainerHighest: "system_neutral1",
+	onSurface: "system_neutral1",
+	onSurfaceVariant: "system_neutral2",
+	outlineVariant: "system_neutral2",
+	primary: "system_accent1",
+	onPrimary: "system_accent1",
+	secondaryContainer: "system_accent2",
+	onSecondaryContainer: "system_accent2",
+	tertiary: "system_accent3",
+};
+
+function anchorsByRow(overrides) {
+	const rows = {};
+	for (const [key, hex] of Object.entries(overrides ?? {})) {
+		if (!HEX.test(hex)) continue;
+		const cut = key.lastIndexOf("_");
+		const row = key.slice(0, cut);
+		const tone = STEP_TONE[key.slice(cut + 1)];
+		// system_error has no palette on the site; skip it.
+		if (tone == null || !ROW_PALETTE[row]) continue;
+		(rows[row] ??= []).push({ tone, hex });
+	}
+	for (const list of Object.values(rows)) list.sort((a, b) => a.tone - b.tone);
+	return rows;
+}
+
+// Hue/chroma interpolated between the surrounding anchors, tone untouched so
+// role contrast survives. Past the last anchor the nearest one is extended.
+// `snap` takes an anchor verbatim when the wanted tone is that close to it,
+// so a role sitting near an Android step shows the theme's literal hex.
+function toneFromAnchors(anchors, tone, snap = 0) {
+	let lo = null;
+	let hi = null;
+	for (const a of anchors) {
+		if (a.tone <= tone) lo = a;
+		if (a.tone >= tone && !hi) hi = a;
+	}
+	if (lo?.tone === tone) return lo.hex;
+	if (snap) {
+		const near = [lo, hi]
+			.filter(Boolean)
+			.sort((a, b) => Math.abs(a.tone - tone) - Math.abs(b.tone - tone))[0];
+		if (near && Math.abs(near.tone - tone) <= snap) return near.hex;
+	}
+	const hct = (a) => Hct.fromInt(argbFromHex(a.hex));
+	if (!lo || !hi) {
+		const edge = hct(lo ?? hi);
+		return hexFromArgb(Hct.from(edge.hue, edge.chroma, tone).toInt());
+	}
+	const a = hct(lo);
+	const b = hct(hi);
+	const f = (tone - lo.tone) / (hi.tone - lo.tone);
+	const dh = ((b.hue - a.hue + 540) % 360) - 180;
+	return hexFromArgb(
+		Hct.from(
+			(a.hue + dh * f + 360) % 360,
+			a.chroma + (b.chroma - a.chroma) * f,
+			tone,
+		).toInt(),
+	);
+}
+
+// Resolves a palette shade to the theme's real color: overrides win, then a
+// custom secondary/tertiary seed, then the scheme. `fixed` marks values that
+// already carry the theme's own numbers, so the saturation and lightness
+// sliders must not be applied to them a second time.
+function makeResolver(scheme, theme, spec, Ctor) {
+	const rows = anchorsByRow(theme?.colorOverrides);
+	const customPalette = (hex) =>
+		HEX.test(hex ?? "")
+			? new Ctor(Hct.fromInt(argbFromHex(hex)), true, 0, spec)
+					.primaryPalette
+			: null;
+	const swapped = {
+		system_accent2: customPalette(theme?.secondaryColor),
+		system_accent3: customPalette(theme?.tertiaryColor),
+	};
+	const shade = (row, tone, snap) => {
+		if (rows[row]?.length) {
+			return { hex: toneFromAnchors(rows[row], tone, snap), fixed: true };
+		}
+		const palette = swapped[row] ?? scheme[ROW_PALETTE[row]];
+		return { hex: hexFromArgb(palette.tone(tone)), fixed: false };
+	};
+	// A role's tone comes from the scheme itself, so this tracks whichever
+	// spec (2021/2025) built it instead of a hardcoded tone table. Accent
+	// roles land within a few tones of an Android step, so they snap to the
+	// theme's literal hex; neutrals must not, or the surface elevation tiers
+	// (tone 4/9/12/15 in dark) would all collapse onto one override.
+	const role = (name) => {
+		const base = hexFromArgb(scheme[name]);
+		const row = ROLE_ROW[name];
+		if (!row) return { hex: base, fixed: false };
+		const tone = Math.round(Hct.fromInt(argbFromHex(base)).tone);
+		return shade(row, tone, row.startsWith("system_accent") ? 5 : 0);
+	};
+	return { shade, role };
+}
+
+// A flat override ramp can leave two elevation tiers on the same tone (Nova
+// Ember pins neutral1 90 and 95 to near-identical grays), which reads as one
+// sheet. Nudge each tier away from the one below it. dir: +1 dark, -1 light.
+function separate(hex, belowHex, dir, min = 3) {
+	const hct = Hct.fromInt(argbFromHex(hex));
+	const below = Hct.fromInt(argbFromHex(belowHex)).tone;
+	const need = below + dir * min;
+	if (dir > 0 ? hct.tone >= need : hct.tone <= need) return hex;
+	const tone = Math.max(0, Math.min(100, need));
+	return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
+}
+
+// Slider values for the active mode; the app ignores them for MONOCHROMATIC.
+function themeSliders(theme) {
+	if (!theme || theme.style === "MONOCHROMATIC") {
+		return { accentSat: 100, bgSat: 100, bgLight: 100 };
+	}
+	const light = !isDark && theme.modeSpecificThemes;
+	return {
+		accentSat:
+			(light ? theme.accentSaturationLight : theme.accentSaturation) ?? 100,
+		bgSat:
+			(light
+				? theme.backgroundSaturationLight
+				: theme.backgroundSaturation) ?? 100,
+		bgLight:
+			(light
+				? theme.backgroundLightnessLight
+				: theme.backgroundLightness) ?? 100,
+	};
+}
+
 // ---- Color search -----------------------------------------------------------
 
 // Same family = hue within a window; wider would cross into other colors.
@@ -109,43 +275,61 @@ darkQuery.addEventListener("change", (e) => {
 	for (const handler of modeHandlers) handler();
 });
 
-function applySiteSeed(seedHex, style, spec, sliders) {
-	const { accentSat = 100, bgSat = 100, bgLight = 100 } = sliders ?? {};
-	const Ctor = SCHEME_BY_STYLE[style] ?? SchemeTonalSpot;
-	const scheme = new Ctor(
-		Hct.fromInt(argbFromHex(seedHex)),
-		isDark,
-		0,
-		spec ?? DEFAULT_SPEC,
-	);
-	const role = (argb) => hexFromArgb(argb);
-	const accent = (argb) => adjustSaturation(role(argb), accentSat);
+// `theme` is the full catalog entry when a card drives the tint; without it
+// the site just renders the seed with library defaults (rotation, boot).
+function applySiteSeed(seedHex, theme) {
+	const Ctor = SCHEME_BY_STYLE[theme?.style] ?? SchemeTonalSpot;
+	const spec = SPEC_BY_VERSION[theme?.colorSpecVersion] ?? DEFAULT_SPEC;
+	const scheme = new Ctor(Hct.fromInt(argbFromHex(seedHex)), isDark, 0, spec);
+	const { accentSat, bgSat, bgLight } = themeSliders(theme);
+	const { shade, role } = makeResolver(scheme, theme, spec, Ctor);
+
+	const plain = (name) => role(name).hex;
+	const accent = (name) => {
+		const r = role(name);
+		return r.fixed ? r.hex : adjustSaturation(r.hex, accentSat);
+	};
 	// Tone floors keep slider-shifted surfaces off pure black + separated.
-	const surf = (argb, minTone, maxTone) =>
-		shiftLightness(
-			adjustSaturation(role(argb), bgSat),
-			bgLight,
-			minTone,
-			maxTone,
-		);
+	// Overridden shades skip the sliders: the theme already baked them in.
+	const surf = (name, minTone, maxTone) => {
+		const r = role(name);
+		return r.fixed
+			? r.hex
+			: shiftLightness(
+					adjustSaturation(r.hex, bgSat),
+					bgLight,
+					minTone,
+					maxTone,
+				);
+	};
+
+	const dir = isDark ? 1 : -1;
+	const bg = surf("surface", 4, 99);
+	const card = separate(surf("surfaceContainer", 10, 96), bg, dir);
+	const cardHigh = separate(surf("surfaceContainerHigh", 14, 93), card, dir);
+	const cardHighest = separate(
+		surf("surfaceContainerHighest", 16, 91),
+		cardHigh,
+		dir,
+	);
 
 	const vars = {
-		"--bg": surf(scheme.surface, 4, 99),
-		"--text": role(scheme.onSurface),
-		"--subtle": alpha(role(scheme.onSurfaceVariant), 0.75),
-		"--body2": role(scheme.onSurfaceVariant),
-		"--accent": accent(scheme.primary),
-		"--on-accent": role(scheme.onPrimary),
-		"--accent-glow": alpha(accent(scheme.primary), 0.32),
-		"--tonal": role(scheme.secondaryContainer),
-		"--on-tonal": role(scheme.onSecondaryContainer),
-		"--card": surf(scheme.surfaceContainer, 10, 96),
-		"--card-high": surf(scheme.surfaceContainerHigh, 14, 93),
-		"--card-highest": surf(scheme.surfaceContainerHighest, 16, 91),
-		"--outline-v": role(scheme.outlineVariant),
-		"--grad-a": role(scheme.onSurface),
-		"--grad-b": accent(scheme.primary),
-		"--grad-c": accent(scheme.tertiary),
+		"--bg": bg,
+		"--text": plain("onSurface"),
+		"--subtle": alpha(plain("onSurfaceVariant"), 0.75),
+		"--body2": plain("onSurfaceVariant"),
+		"--accent": accent("primary"),
+		"--on-accent": plain("onPrimary"),
+		"--accent-glow": alpha(accent("primary"), 0.32),
+		"--tonal": plain("secondaryContainer"),
+		"--on-tonal": plain("onSecondaryContainer"),
+		"--card": card,
+		"--card-high": cardHigh,
+		"--card-highest": cardHighest,
+		"--outline-v": plain("outlineVariant"),
+		"--grad-a": plain("onSurface"),
+		"--grad-b": accent("primary"),
+		"--grad-c": accent("tertiary"),
 	};
 	for (const [k, v] of Object.entries(vars)) {
 		document.documentElement.style.setProperty(k, v);
@@ -157,10 +341,10 @@ function applySiteSeed(seedHex, style, spec, sliders) {
 		?.setAttribute("content", vars["--bg"]);
 
 	// Hero logo disc follows the seed (launcher gradient formula).
-	const stopColors = [
-		adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(70)), accentSat),
-		adjustSaturation(hexFromArgb(scheme.primaryPalette.tone(40)), accentSat),
-	];
+	const stopColors = [70, 40].map((tone) => {
+		const s = shade("system_accent1", tone);
+		return s.fixed ? s.hex : adjustSaturation(s.hex, accentSat);
+	});
 	const stops = document.querySelectorAll("#lg stop");
 	if (stops.length === 2) {
 		stops[0].style.setProperty("stop-color", stopColors[0]);
@@ -233,30 +417,27 @@ function startSeedRotation(themes) {
 
 // Hovered card retints the whole site with its seed; leave reverts.
 // --recolor shortens every themed transition while the hover drives it.
-function initHoverTheming(container) {
+function initHoverTheming(container, byId) {
 	if (!container || !matchMedia("(hover: hover)").matches) return;
 	const root = document.documentElement;
-	let activeSeed = null;
+	let activeId = null;
 	let clearTimer = null;
 	container.addEventListener("mouseover", (e) => {
 		const card = e.target.closest?.(".tcard");
 		const seed = card?.dataset.seed;
-		if (!seed || seed === activeSeed) return;
-		activeSeed = seed;
+		const id = card?.dataset.id;
+		if (!seed || id === activeId) return;
+		activeId = id;
 		hoverHold = true;
 		if (clearTimer) clearTimeout(clearTimer);
 		root.style.setProperty("--recolor", ".5s");
-		applySiteSeed(seed, card.dataset.style, card.dataset.spec, {
-			accentSat: +card.dataset.asat || 100,
-			bgSat: +card.dataset.bsat || 100,
-			bgLight: +card.dataset.blight || 100,
-		});
+		applySiteSeed(seed, byId.get(id));
 	});
 	container.addEventListener("mouseout", (e) => {
 		const card = e.target.closest?.(".tcard");
 		if (!card || card.contains(e.relatedTarget)) return;
 		if (e.relatedTarget?.closest?.(".tcard")) return;
-		activeSeed = null;
+		activeId = null;
 		hoverHold = false;
 		applySiteSeed(restingSeed);
 		clearTimer = setTimeout(
@@ -276,58 +457,31 @@ function cardData(theme) {
 	const Ctor = SCHEME_BY_STYLE[theme.style] ?? SchemeTonalSpot;
 	const spec = SPEC_BY_VERSION[theme.colorSpecVersion] ?? DEFAULT_SPEC;
 	const scheme = new Ctor(Hct.fromInt(argbFromHex(seed)), isDark, 0, spec);
-	const isMono = theme.style === "MONOCHROMATIC";
-	const accentSat = isMono ? 100 : (theme.accentSaturation ?? 100);
-	const bgSat = isMono ? 100 : (theme.backgroundSaturation ?? 100);
-	const bgLight = isMono ? 100 : (theme.backgroundLightness ?? 100);
+	const { accentSat, bgSat, bgLight } = themeSliders(theme);
+	const { shade, role } = makeResolver(scheme, theme, spec, Ctor);
 
-	const customPalette = (hex) =>
-		HEX.test(hex ?? "")
-			? new Ctor(Hct.fromInt(argbFromHex(hex)), true, 0, spec)
-					.primaryPalette
-			: null;
-	const secondaryPalette =
-		customPalette(theme.secondaryColor) ?? scheme.secondaryPalette;
-	const tertiaryPalette =
-		customPalette(theme.tertiaryColor) ?? scheme.tertiaryPalette;
-
-	const cell = (palette, overrideKey, tone, accent) => {
-		const override = theme.colorOverrides?.[overrideKey];
-		if (override && HEX.test(override)) return override;
-		const base = hexFromArgb(palette.tone(tone));
-		return accent
-			? adjustSaturation(base, accentSat)
-			: shiftLightness(adjustSaturation(base, bgSat), bgLight);
+	const accentCell = (row, tone) => {
+		const s = shade(row, tone);
+		return s.fixed ? s.hex : adjustSaturation(s.hex, accentSat);
 	};
+	const surfCell = (s) =>
+		s.fixed
+			? s.hex
+			: shiftLightness(adjustSaturation(s.hex, bgSat), bgLight);
 
 	return {
-		spec,
-		accentSat,
-		bgSat,
-		bgLight,
-		halfCircle: cell(scheme.primaryPalette, "system_accent1_200", 80, true),
-		firstQuarter: cell(tertiaryPalette, "system_accent3_300", 70, true),
-		secondQuarter: cell(secondaryPalette, "system_accent2_400", 60, true),
-		square: cell(
-			scheme.neutralVariantPalette,
-			"system_neutral2_700",
-			30,
-			false,
-		),
+		halfCircle: accentCell("system_accent1", 80),
+		firstQuarter: accentCell("system_accent3", 70),
+		secondQuarter: accentCell("system_accent2", 60),
+		square: surfCell(shade("system_neutral2", 30)),
 		center: seed,
 		// Primary tonal run for the hover strip along the card's bottom edge.
 		strip: [95, 85, 70, 55, 40, 25].map((tone) =>
-			adjustSaturation(
-				hexFromArgb(scheme.primaryPalette.tone(tone)),
-				accentSat,
-			),
+			accentCell("system_accent1", tone),
 		),
-		container: shiftLightness(
-			adjustSaturation(hexFromArgb(scheme.surfaceContainerHigh), bgSat),
-			bgLight,
-		),
-		text: hexFromArgb(scheme.onSurface),
-		subtle: hexFromArgb(scheme.onSurfaceVariant),
+		container: surfCell(role("surfaceContainerHigh")),
+		text: role("onSurface").hex,
+		subtle: role("onSurfaceVariant").hex,
 	};
 }
 
@@ -350,7 +504,9 @@ const downloadIcon =
 function cardHtml(theme) {
 	const c = cardData(theme);
 	const seed = HEX.test(theme.seedColor ?? "") ? theme.seedColor : "";
-	return `<a class="tcard" data-seed="${seed}" data-style="${esc(theme.style ?? "")}" data-spec="${c.spec}" data-asat="${c.accentSat}" data-bsat="${c.bgSat}" data-blight="${c.bgLight}" style="background:${c.container};color:${c.text}" href="${WORKER}/theme/${esc(theme.id)}">
+	// Hover theming looks the entry up by id; colorOverrides are far too big
+	// to bake into a data attribute on every (repeated) card.
+	return `<a class="tcard" data-seed="${seed}" data-id="${esc(theme.id)}" style="background:${c.container};color:${c.text}" href="${WORKER}/theme/${esc(theme.id)}">
         ${swatchSvg(c)}
         <span class="tinfo">
             <span class="tname">${esc(theme.name)}</span>
@@ -555,7 +711,10 @@ export async function initHome() {
 		buildRail();
 		window.addEventListener("resize", () => buildRail());
 		modeHandlers.push(() => buildRail(true));
-		initHoverTheming(document.getElementById("rail"));
+		initHoverTheming(
+			document.getElementById("rail"),
+			new Map(themes.map((t) => [t.id, t])),
+		);
 
 		// Catalog totals under the rail, counting up on reveal.
 		const stats = document.getElementById("stats");
@@ -579,11 +738,14 @@ export async function initAllThemes() {
 	persistTheme(applySiteSeed(restingSeed));
 	initReveal();
 	initSpotlight();
-	initHoverTheming(document.getElementById("grid"));
 	let themes = [];
 	try {
 		themes = await loadThemes();
 		startSeedRotation(themes);
+		initHoverTheming(
+			document.getElementById("grid"),
+			new Map(themes.map((t) => [t.id, t])),
+		);
 	} catch {
 		document.getElementById("grid").innerHTML =
 			'<div class="loading" role="status">Couldn\'t load creations. Check your connection, then reload the page.</div>';
