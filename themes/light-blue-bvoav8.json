@@ -1,0 +1,17 @@
+{
+  "id": "light-blue-bvoav8",
+  "schemaVersion": 1,
+  "name": "Light Blue",
+  "description": "nice light blue",
+  "author": "",
+  "style": "TONAL_SPOT",
+  "seedColor": "#ADEFFF",
+  "accentSaturation": 75,
+  "backgroundSaturation": 125,
+  "backgroundLightness": 50,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1785673192
+}
