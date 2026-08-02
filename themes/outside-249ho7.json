@@ -1,0 +1,19 @@
+{
+  "id": "outside-249ho7",
+  "schemaVersion": 1,
+  "name": "Outside",
+  "description": "Green and gold, a bit of orange, looks good, not too vibrant",
+  "author": "u/syncopegress",
+  "style": "RAINBOW",
+  "seedColor": "#096D01",
+  "secondaryColor": "#DEC168",
+  "tertiaryColor": "#F64D14",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "createdAt": 1785691203
+}
