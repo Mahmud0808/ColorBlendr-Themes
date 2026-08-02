@@ -32,7 +32,6 @@
     "system_neutral1_500": "#00FFFF",
     "system_neutral1_600": "#00FFFF",
     "system_neutral1_800": "#008080",
-    "system_neutral1_900": "#00FFFF",
     "system_neutral2_0": "#00FFFF",
     "system_neutral2_10": "#00FFFF",
     "system_neutral2_50": "#00FFFF",
@@ -41,8 +40,7 @@
     "system_neutral2_400": "#82FFFF",
     "system_neutral2_500": "#00FFFF",
     "system_neutral2_600": "#00FFFF",
-    "system_neutral2_700": "#008080",
-    "system_neutral2_900": "#00FFFF"
+    "system_neutral2_700": "#008080"
   },
   "createdAt": 1785699976
 }
