@@ -1,0 +1,17 @@
+{
+  "id": "green-aeh8c1",
+  "schemaVersion": 1,
+  "name": "Grass Green",
+  "description": "Fresh grass tones inspired by nature, growth, and calm outdoor spaces.",
+  "author": "Abol",
+  "style": "VIBRANT",
+  "seedColor": "#00FF00",
+  "accentSaturation": 70,
+  "backgroundSaturation": 50,
+  "backgroundLightness": 50,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": false,
+  "createdAt": 1785680445
+}
