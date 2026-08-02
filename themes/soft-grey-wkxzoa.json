@@ -1,0 +1,17 @@
+{
+  "id": "soft-grey-wkxzoa",
+  "schemaVersion": 1,
+  "name": "Soft Grey",
+  "description": "A soft grey color palette.",
+  "author": "",
+  "style": "SPRITZ",
+  "seedColor": "#8693A8",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1785699970
+}
