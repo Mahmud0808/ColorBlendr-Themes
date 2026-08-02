@@ -1,13 +1,7 @@
 name: Build index
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "themes/**"
-      - "scripts/**"
   schedule:
-    # Daily: refresh vote/download counts baked into index.json.
     - cron: "0 3 * * *"
   workflow_dispatch:
 
