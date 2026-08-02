@@ -220,7 +220,7 @@ function makeResolver(scheme, theme, spec, Ctor) {
 }
 
 export default {
-	async fetch(request, env) {
+	async fetch(request, env, ctx) {
 		const url = new URL(request.url);
 		try {
 			if (request.method === "POST" && url.pathname === "/vote") {
@@ -239,7 +239,7 @@ export default {
 				return await upload(request, env);
 			}
 			if (url.pathname.startsWith("/admin/")) {
-				return await admin(request, url, env);
+				return await admin(request, url, env, ctx);
 			}
 			if (request.method === "POST" && url.pathname === "/report") {
 				return await report(request, env);
@@ -1021,6 +1021,10 @@ async function upload(request, env) {
 }
 
 const MAX_ADMIN_FAILURES_PER_HOUR = 5;
+// GitHub throttles bursts of writes to one repo; two approvals tapped
+// together collide here. Retry on the throttle instead of losing the PR.
+const GITHUB_MAX_RETRIES = 3;
+const GITHUB_MAX_BACKOFF_MS = 10000;
 
 async function hashIp(ip) {
 	const data = new TextEncoder().encode(`${ip}colorblendr-ip-v1`);
@@ -1044,7 +1048,7 @@ function adminKeyMatches(candidate, secret) {
 // (generate with `openssl rand -hex 32`; never ships in the app or either
 // repo). Brute force is dead on arrival: 256-bit key space + 5 failed
 // attempts/hour/IP lockout + constant-time compare.
-async function admin(request, url, env) {
+async function admin(request, url, env, ctx) {
 	const ipHash = await hashIp(
 		request.headers.get("cf-connecting-ip") ?? "unknown",
 	);
@@ -1145,10 +1149,22 @@ async function admin(request, url, env) {
 			null,
 			2,
 		);
-		const prUrl = await openPullRequest(env, id, row.name, themeJson);
-		if (!prUrl) return json({ error: "github error" }, 502);
+		// waitUntil keeps this alive if the admin app disconnects mid-call —
+		// otherwise an aborted request strands a branch with no PR and the
+		// queue row survives, so the theme reappears in the review list.
+		const work = (async () => {
+			const prUrl = await openPullRequest(env, id, row.name, themeJson);
+			if (prUrl) {
+				await env.DB.prepare("DELETE FROM pending WHERE id = ?")
+					.bind(id)
+					.run();
+			}
+			return prUrl;
+		})();
+		ctx?.waitUntil?.(work);
 
-		await env.DB.prepare("DELETE FROM pending WHERE id = ?").bind(id).run();
+		const prUrl = await work;
+		if (!prUrl) return json({ error: "github error" }, 502);
 		return json({ prUrl });
 	}
 
@@ -1181,38 +1197,53 @@ async function verifyTurnstile(token, env) {
 	return result?.success === true;
 }
 
+// Every step tolerates its own output already being there, so a half-done
+// approve (branch made, PR not) finishes on the next try instead of dying
+// on a 422 "already exists". Same theme approved twice -> same PR url.
 async function openPullRequest(env, id, themeName, themeJson) {
-	const gh = (path, init = {}) =>
-		fetch(`https://api.github.com/repos/${env.GITHUB_REPO}${path}`, {
-			...init,
-			headers: {
-				authorization: `Bearer ${env.GITHUB_TOKEN}`,
-				accept: "application/vnd.github+json",
-				"user-agent": "colorblendr-themes-worker",
-				...init.headers,
-			},
-		});
+	const gh = (path, init) => githubFetch(env, path, init);
+	const branch = `theme/${id}`;
+	const path = `themes/${id}.json`;
+	const owner = env.GITHUB_REPO.split("/")[0];
+
+	// Already merged: nothing left to open, but the caller must still drop
+	// the queue row, so report success.
+	const merged = await gh(`/contents/${path}?ref=main`);
+	if (merged.ok) {
+		return `https://github.com/${env.GITHUB_REPO}/blob/main/${path}`;
+	}
 
 	const main = await (await gh("/git/ref/heads/main")).json();
 	const baseSha = main?.object?.sha;
 	if (!baseSha) return null;
 
-	const branch = `theme/${id}`;
 	const created = await gh("/git/refs", {
 		method: "POST",
 		body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: baseSha }),
 	});
-	if (!created.ok) return null;
+	// 422 = ref exists from an earlier attempt; reuse it.
+	if (!created.ok && created.status !== 422) return null;
 
-	const file = await gh(`/contents/themes/${id}.json`, {
-		method: "PUT",
-		body: JSON.stringify({
-			message: `Add theme: ${themeName}`,
-			content: btoa(unescape(encodeURIComponent(themeJson))),
-			branch,
-		}),
-	});
-	if (!file.ok) return null;
+	// Keep the earlier commit if there is one — rewriting it would only
+	// churn createdAt.
+	const existing = await gh(`/contents/${path}?ref=${branch}`);
+	if (!existing.ok) {
+		const file = await gh(`/contents/${path}`, {
+			method: "PUT",
+			body: JSON.stringify({
+				message: `Add theme: ${themeName}`,
+				content: btoa(unescape(encodeURIComponent(themeJson))),
+				branch,
+			}),
+		});
+		if (!file.ok) return null;
+	}
+
+	const open = await gh(`/pulls?head=${owner}:${branch}&state=open`);
+	if (open.ok) {
+		const url = (await open.json().catch(() => null))?.[0]?.html_url;
+		if (url) return url;
+	}
 
 	const pr = await gh("/pulls", {
 		method: "POST",
@@ -1225,4 +1256,35 @@ async function openPullRequest(env, id, themeName, themeJson) {
 	});
 	const prBody = await pr.json().catch(() => null);
 	return prBody?.html_url ?? null;
+}
+
+// Retries only the throttle responses (429, or 403 carrying rate-limit
+// headers) — a 403 from a bad token still fails fast.
+async function githubFetch(env, path, init = {}, attempt = 0) {
+	const response = await fetch(
+		`https://api.github.com/repos/${env.GITHUB_REPO}${path}`,
+		{
+			...init,
+			headers: {
+				authorization: `Bearer ${env.GITHUB_TOKEN}`,
+				accept: "application/vnd.github+json",
+				"user-agent": "colorblendr-themes-worker",
+				...init.headers,
+			},
+		},
+	);
+
+	const retryAfter = response.headers.get("retry-after");
+	const throttled =
+		response.status === 429 ||
+		(response.status === 403 &&
+			(retryAfter !== null ||
+				response.headers.get("x-ratelimit-remaining") === "0"));
+	if (!throttled || attempt >= GITHUB_MAX_RETRIES) return response;
+
+	const wait = Number(retryAfter) * 1000 || (attempt + 1) * 2000;
+	await new Promise((resolve) =>
+		setTimeout(resolve, Math.min(wait, GITHUB_MAX_BACKOFF_MS)),
+	);
+	return githubFetch(env, path, init, attempt + 1);
 }
