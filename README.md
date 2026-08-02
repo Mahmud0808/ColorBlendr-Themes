@@ -81,8 +81,13 @@ Every submission is human-reviewed before merge.
   app (`devapp` module in the ColorBlendr repo): enter the admin key once,
   then preview (tap a card to copy its config for the main app's theme
   tester), approve, or reject. Approving opens the PR via the bot token.
+- The Dev app can rewrite a submission's name and description before
+  approving (typos, junk descriptions). `/admin/approve` takes optional
+  `name` / `description` fields that replace the submitted ones; the theme
+  id keeps its original slug, so approve stays retry-safe.
 - Curl fallback: `curl -H "x-admin-key: KEY" <worker-url>/admin/pending`,
-  then POST `{"id": "..."}` to `/admin/approve` or `/admin/reject`.
+  then POST `{"id": "..."}` to `/admin/approve` or `/admin/reject`
+  (approve also accepts `{"id": "...", "name": "...", "description": "..."}`).
 - Abusive uploaders can be blocked permanently (and unblocked) from the Dev
   app — identity is the anonymous salted device hash also used for votes,
   with a reason and date stored so blocks stay identifiable.

@@ -45,6 +45,8 @@ const DEFAULT_SPEC = "2025";
 
 const ID_REGEX = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const DEVICE_REGEX = /^[a-f0-9]{64}$/;
+const MAX_NAME = 40;
+const MAX_DESCRIPTION = 500;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const MONET_STYLES = [
 	"SPRITZ",
@@ -861,11 +863,11 @@ function validatePayload(p) {
 	if (!p || typeof p !== "object" || Array.isArray(p)) return null;
 	if (p.schemaVersion !== 1) return null;
 
-	const name = clean(p.name, 40);
+	const name = clean(p.name, MAX_NAME);
 	if (!name) return null;
-	const description = cleanMultiline(p.description ?? "", 500);
+	const description = cleanMultiline(p.description ?? "", MAX_DESCRIPTION);
 	if (!description) return null;
-	const author = clean(p.author ?? "", 40);
+	const author = clean(p.author ?? "", MAX_NAME);
 
 	if (!MONET_STYLES.includes(p.style)) return null;
 	if (!HEX_COLOR.test(p.seedColor ?? "")) return null;
@@ -1136,6 +1138,22 @@ async function admin(request, url, env, ctx) {
 		if (!ID_REGEX.test(id ?? ""))
 			return json({ error: "bad request" }, 400);
 
+		// Optional admin rewrite of the submitted text. Same limits as
+		// /upload; the id keeps its original slug so approve stays
+		// idempotent (same branch, same PR) across retries.
+		const nameEdit =
+			body?.name === undefined ? null : clean(body.name, MAX_NAME);
+		const descriptionEdit =
+			body?.description === undefined
+				? null
+				: cleanMultiline(body.description, MAX_DESCRIPTION);
+		if (
+			(body?.name !== undefined && !nameEdit) ||
+			(body?.description !== undefined && !descriptionEdit)
+		) {
+			return json({ error: "bad request" }, 400);
+		}
+
 		const row = await env.DB.prepare(
 			"SELECT name, payload FROM pending WHERE id = ?",
 		)
@@ -1144,6 +1162,9 @@ async function admin(request, url, env, ctx) {
 		if (!row) return json({ error: "not found" }, 404);
 
 		const payload = JSON.parse(row.payload);
+		if (nameEdit) payload.name = nameEdit;
+		if (descriptionEdit) payload.description = descriptionEdit;
+		const themeName = nameEdit ?? row.name;
 		const themeJson = JSON.stringify(
 			{ id, ...payload, createdAt: Math.floor(Date.now() / 1000) },
 			null,
@@ -1153,7 +1174,7 @@ async function admin(request, url, env, ctx) {
 		// otherwise an aborted request strands a branch with no PR and the
 		// queue row survives, so the theme reappears in the review list.
 		const work = (async () => {
-			const prUrl = await openPullRequest(env, id, row.name, themeJson);
+			const prUrl = await openPullRequest(env, id, themeName, themeJson);
 			if (prUrl) {
 				await env.DB.prepare("DELETE FROM pending WHERE id = ?")
 					.bind(id)
