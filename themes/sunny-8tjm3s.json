@@ -1,0 +1,17 @@
+{
+  "id": "sunny-8tjm3s",
+  "schemaVersion": 1,
+  "name": "Sunny",
+  "description": "A warm, comfortable pallete that ironically works better with Dark Mode.",
+  "author": "s0lus",
+  "style": "FIDELITY",
+  "seedColor": "#D8B557",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1785703533
+}
