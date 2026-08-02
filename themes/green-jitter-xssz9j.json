@@ -1,0 +1,30 @@
+{
+  "id": "green-jitter-xssz9j",
+  "schemaVersion": 1,
+  "name": "Green Jitter",
+  "description": "An modified color pallete that mixes brown and some sprinkles of green.",
+  "author": "",
+  "style": "SPRITZ",
+  "seedColor": "#B5A884",
+  "accentSaturation": 106,
+  "backgroundSaturation": 138,
+  "backgroundLightness": 65,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_10": "#FFEBFF",
+    "system_accent1_50": "#FAEBCD",
+    "system_accent1_100": "#EBEDC9",
+    "system_accent1_300": "#B4B188",
+    "system_accent1_600": "#65514A",
+    "system_accent1_700": "#4C4A35",
+    "system_accent2_10": "#FDFFEC",
+    "system_neutral1_10": "#FEFCEB",
+    "system_neutral1_50": "#E3EAD5",
+    "system_neutral1_700": "#473732",
+    "system_neutral1_800": "#272B1F"
+  },
+  "createdAt": 1785680451
+}
