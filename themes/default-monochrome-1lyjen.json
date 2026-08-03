@@ -1,0 +1,17 @@
+{
+  "id": "default-monochrome-1lyjen",
+  "schemaVersion": 1,
+  "name": "Graphite Night",
+  "description": "A minimal dark palette exploring the full depth of black and neutral shades.",
+  "author": "Jaf",
+  "style": "MONOCHROMATIC",
+  "seedColor": "#0880E8",
+  "accentSaturation": 100,
+  "backgroundSaturation": 85,
+  "backgroundLightness": 0,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "createdAt": 1785743147
+}
