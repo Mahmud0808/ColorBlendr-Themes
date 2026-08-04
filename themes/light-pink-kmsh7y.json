@@ -1,0 +1,17 @@
+{
+  "id": "light-pink-kmsh7y",
+  "schemaVersion": 1,
+  "name": "Light Pink",
+  "description": "This will make primary colors to pink and no more",
+  "author": "",
+  "style": "VIBRANT",
+  "seedColor": "#FB74AB",
+  "accentSaturation": 70,
+  "backgroundSaturation": 50,
+  "backgroundLightness": 0,
+  "accurateShades": false,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": false,
+  "createdAt": 1785825720
+}
