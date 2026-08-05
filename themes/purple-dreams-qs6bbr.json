@@ -1,0 +1,27 @@
+{
+  "id": "purple-dreams-qs6bbr",
+  "schemaVersion": 1,
+  "name": "Purple Dreams",
+  "description": "A dream in purple",
+  "author": "",
+  "style": "SPRITZ",
+  "seedColor": "#F7CAE4",
+  "secondaryColor": "#C9A6F4",
+  "accentSaturation": 200,
+  "backgroundSaturation": 150,
+  "backgroundLightness": 61,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 115,
+  "backgroundSaturationLight": 115,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 1,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_200": "#B8B7E2",
+    "system_accent2_100": "#EFD7FF",
+    "system_accent2_700": "#9B73CF"
+  },
+  "createdAt": 1785955955
+}
