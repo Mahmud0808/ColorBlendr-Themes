@@ -1,0 +1,23 @@
+{
+  "id": "neon-dark-night-t4lr08",
+  "schemaVersion": 1,
+  "name": "Neon Dark Night",
+  "description": "Dark mode with Neon contrast colors of Green & Violet",
+  "author": "Mandrake",
+  "style": "CMF",
+  "seedColor": "#79FF5E",
+  "secondaryColor": "#FF6A00",
+  "tertiaryColor": "#9400D3",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 100,
+  "backgroundSaturationLight": 100,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": true,
+  "tintText": false,
+  "createdAt": 1786068633
+}
