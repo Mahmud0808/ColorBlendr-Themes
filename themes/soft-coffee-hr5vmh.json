@@ -1,0 +1,20 @@
+{
+  "id": "soft-coffee-hr5vmh",
+  "schemaVersion": 1,
+  "name": "Soft Coffee",
+  "description": "Easy on the eyes",
+  "author": "Vladimir",
+  "style": "CONTENT",
+  "seedColor": "#523834",
+  "accentSaturation": 100,
+  "backgroundSaturation": 110,
+  "backgroundLightness": 126,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_100": "#D9B2AE"
+  },
+  "createdAt": 1786076489
+}
