@@ -1,0 +1,27 @@
+{
+  "id": "balanced-pure-black-2qab3l",
+  "schemaVersion": 1,
+  "name": "Balanced Pure Black",
+  "description": "A mostly pure black theme with blue accent colors",
+  "author": "",
+  "style": "TONAL_SPOT",
+  "seedColor": "#95B8F6",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 100,
+  "backgroundSaturationLight": 100,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_neutral1_800": "#090909",
+    "system_neutral1_900": "#000000",
+    "system_neutral2_800": "#000000",
+    "system_neutral2_900": "#050505"
+  },
+  "createdAt": 1786260836
+}
