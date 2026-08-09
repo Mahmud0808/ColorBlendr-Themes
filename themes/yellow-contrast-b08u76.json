@@ -1,0 +1,31 @@
+{
+  "id": "yellow-contrast-b08u76",
+  "schemaVersion": 1,
+  "name": "Yellow contrast",
+  "description": "Colorless background, but colored text",
+  "author": "",
+  "style": "TONAL_SPOT",
+  "seedColor": "#F3EDC8",
+  "accentSaturation": 200,
+  "backgroundSaturation": 200,
+  "backgroundLightness": 100,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 140,
+  "backgroundSaturationLight": 140,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "colorOverrides": {
+    "system_neutral1_600": "#4C4C4C",
+    "system_neutral1_700": "#333333",
+    "system_neutral1_800": "#1A1A1A",
+    "system_neutral1_900": "#000000",
+    "system_neutral2_600": "#4B4B4B",
+    "system_neutral2_700": "#343434",
+    "system_neutral2_800": "#1A1A1A",
+    "system_neutral2_900": "#000000"
+  },
+  "createdAt": 1786313077
+}
