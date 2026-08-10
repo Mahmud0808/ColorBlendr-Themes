@@ -1,0 +1,28 @@
+{
+  "id": "halloween-theme-ylsdy9",
+  "schemaVersion": 1,
+  "name": "Halloween theme",
+  "description": "A black and orange theme for halloween :3",
+  "author": "MsAria",
+  "style": "VIBRANT",
+  "seedColor": "#F7730D",
+  "secondaryColor": "#F67627",
+  "tertiaryColor": "#F67627",
+  "accentSaturation": 199,
+  "backgroundSaturation": 200,
+  "backgroundLightness": 54,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_100": "#FF5100",
+    "system_accent1_200": "#FF5900",
+    "system_accent1_300": "#EF6800",
+    "system_accent2_700": "#FF6200",
+    "system_accent2_800": "#000000",
+    "system_neutral1_50": "#FF5500",
+    "system_neutral2_800": "#FF6600"
+  },
+  "createdAt": 1786392813
+}
