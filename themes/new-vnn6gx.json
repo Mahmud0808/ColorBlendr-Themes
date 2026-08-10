@@ -1,0 +1,21 @@
+{
+  "id": "new-vnn6gx",
+  "schemaVersion": 1,
+  "name": "Deep Tide",
+  "description": "A rich, moody teal palette with cool aquatic depth.",
+  "author": "",
+  "style": "TONAL_SPOT",
+  "seedColor": "#02292D",
+  "accentSaturation": 100,
+  "backgroundSaturation": 200,
+  "backgroundLightness": 67,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 100,
+  "backgroundSaturationLight": 100,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1786393028
+}
