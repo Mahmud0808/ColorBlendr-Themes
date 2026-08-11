@@ -1,0 +1,19 @@
+{
+  "id": "ocean-030028",
+  "schemaVersion": 1,
+  "name": "Ocean",
+  "description": "Blue ocean",
+  "author": "",
+  "style": "SPRITZ",
+  "seedColor": "#00AEFF",
+  "secondaryColor": "#00AEFF",
+  "tertiaryColor": "#00AEFF",
+  "accentSaturation": 200,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 50,
+  "accurateShades": false,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": false,
+  "createdAt": 1786449576
+}
