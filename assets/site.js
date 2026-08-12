@@ -47,6 +47,17 @@ const esc = (s) =>
 				"'": "&#39;",
 			})[c],
 	);
+
+// Counts of 1000+ collapse to 1K / 1.1K so a popular theme's stats stay inside
+// the card. Truncated, never rounded up, so the shown figure is never ahead of
+// the real one.
+const compact = (n) => {
+	const value = Number(n) || 0;
+	if (value < 1000) return String(value);
+	const [unit, divisor] = value < 1e6 ? ["K", 1e3] : ["M", 1e6];
+	const scaled = Math.floor((value / divisor) * 10) / 10;
+	return `${Number.isInteger(scaled) ? scaled : scaled.toFixed(1)}${unit}`;
+};
 const alpha = (hex, a) =>
 	hex +
 	Math.round(a * 255)
@@ -512,8 +523,8 @@ function cardHtml(theme) {
             <span class="tname">${esc(theme.name)}</span>
             <span class="tauthor" style="color:${c.subtle}">by ${esc(theme.author || "Anonymous")}</span>
             <span class="tstats" style="color:${c.subtle}">
-                <span>${thumbIcon}${theme.upvotes ?? 0}</span>
-                <span>${downloadIcon}${theme.downloads ?? 0}</span>
+                <span>${thumbIcon}${compact(theme.upvotes)}</span>
+                <span>${downloadIcon}${compact(theme.downloads)}</span>
             </span>
         </span>
         <span class="pstrip" aria-hidden="true">${c.strip.map((hex) => `<i style="background:${hex}"></i>`).join("")}</span>

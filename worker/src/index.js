@@ -378,6 +378,17 @@ async function themePage(url, env) {
 				})[c],
 		);
 
+	// Counts of 1000+ collapse to 1K / 1.1K, matching the site's cards.
+	// Truncated, never rounded up, so the shown figure is never ahead of the
+	// real one.
+	const compact = (n) => {
+		const value = Number(n) || 0;
+		if (value < 1000) return String(value);
+		const [unit, divisor] = value < 1e6 ? ["K", 1e3] : ["M", 1e6];
+		const scaled = Math.floor((value / divisor) * 10) / 10;
+		return `${Number.isInteger(scaled) ? scaled : scaled.toFixed(1)}${unit}`;
+	};
+
 	// Style -> MCU scheme + theme sliders on top = matches applied look.
 	// Both modes derived; CSS swaps via prefers-color-scheme.
 	const seed = HEX_COLOR.test(theme.seedColor ?? "")
@@ -685,8 +696,8 @@ async function themePage(url, env) {
   <p class="author">by ${esc(theme.author || "Anonymous")}</p>
   <p class="desc">${esc(theme.description)}</p>
   <div class="chips">
-    <span class="chip">${thumbIcon}${theme.upvotes ?? 0}</span>
-    <span class="chip">${downloadIcon}${theme.downloads ?? 0}</span>
+    <span class="chip">${thumbIcon}${compact(theme.upvotes)}</span>
+    <span class="chip">${downloadIcon}${compact(theme.downloads)}</span>
   </div>
   <a class="btn open" href="colorblendr://theme/${esc(id)}">Open in ColorBlendr</a>
   <a class="btn get" href="https://github.com/Mahmud0808/ColorBlendr">Get the app</a>
