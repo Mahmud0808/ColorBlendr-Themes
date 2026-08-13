@@ -3,90 +3,48 @@
 * {
 	box-sizing: border-box;
 }
-@font-face {
-	font-family: "Outfit";
-	src: url("fonts/outfit-var.woff2") format("woff2-variations");
-	font-weight: 100 900;
-	font-display: swap;
-}
-@property --grad-a {
-	syntax: "<color>";
-	inherits: true;
-	initial-value: #e0e6ee;
-}
-@property --grad-b {
-	syntax: "<color>";
-	inherits: true;
-	initial-value: #a8cbe7;
-}
-@property --grad-c {
-	syntax: "<color>";
-	inherits: true;
-	initial-value: #dcddff;
-}
-/* Only the grad vars animate at :root (gradients cannot interpolate).
-   Everything else transitions its own property once - a root transition
-   plus an element transition would double-smooth and desync. */
 :root {
-	transition:
-		--grad-a var(--recolor, 1.6s) ease,
-		--grad-b var(--recolor, 1.6s) ease,
-		--grad-c var(--recolor, 1.6s) ease;
-}
-:root {
-	--bg: #0b0f11;
-	--text: #e0e6ee;
-	--body2: #a5acb3;
-	--subtle: #a5acb3bf;
+	--bg: #14171a;
+	--text: #eff1f5;
+	--body2: #ebf1f9;
+	--subtle: #ebf1f9e6;
 	--accent: #a8cbe7;
-	--on-accent: #20445b;
-	--accent-glow: #a8cbe752;
-	--tonal: #2d3d4a;
-	--on-tonal: #b0c1d1;
-	--card: #151a1e;
-	--card-high: #1b2025;
-	--card-highest: #20272c;
-	--outline-v: #42494f;
-	--grad-a: #e0e6ee;
-	--grad-b: #a8cbe7;
-	--grad-c: #dcddff;
-	--font-d:
-		"Outfit", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--on-accent: #0b344a;
+	--tonal: #384956;
+	--on-tonal: #d3e5f5;
+	--card: #1c1f22;
+	--card-high: #2e3134;
+	--card-highest: #34373a;
+	--outline-v: #41484e;
+	--grad-c: #c0c3f2;
 	--shadow-card: rgba(0, 0, 0, 0.35);
 	--shadow-menu: rgba(0, 0, 0, 0.4);
 	--shimmer: rgba(255, 255, 255, 0.055);
-	--spot: rgba(255, 255, 255, 0.07);
-	--aur-op: 0.3;
 }
 /* Light fallbacks approximate the boot seed's light scheme so first paint
    is close; site.js recomputes exact MCU values right after. */
 @media (prefers-color-scheme: light) {
 	:root {
-		--bg: #f6f9fc;
-		--text: #181c20;
-		--body2: #41484d;
-		--subtle: #41484dbf;
-		--accent: #29638a;
+		--bg: #f9f9fc;
+		--text: #2e3134;
+		--body2: #2a3137;
+		--subtle: #2a3137e6;
+		--accent: #326383;
 		--on-accent: #ffffff;
-		--accent-glow: #29638a40;
-		--tonal: #d3e4f5;
-		--on-tonal: #22323f;
-		--card: #eaeef3;
-		--card-high: #e4e9ee;
-		--card-highest: #dee3e9;
-		--outline-v: #c1c7ce;
-		--grad-a: #181c20;
-		--grad-b: #29638a;
-		--grad-c: #575d92;
+		--tonal: #d3e5f5;
+		--on-tonal: #0c1d29;
+		--card: #eaecf0;
+		--card-high: #f0f1f4;
+		--card-highest: #f6f6f9;
+		--outline-v: #c1c7cf;
+		--grad-c: #575b84;
 		--shadow-card: rgba(23, 40, 57, 0.18);
 		--shadow-menu: rgba(23, 40, 57, 0.22);
 		--shimmer: rgba(255, 255, 255, 0.55);
-		--spot: rgba(20, 40, 60, 0.05);
-		--aur-op: 0.5;
 	}
 }
 /* clip (not hidden) on BOTH roots: mobile Chrome/Safari expand the layout
-   viewport past device-width for out-of-flow overflow (the aurora blobs)
+   viewport past device-width for out-of-flow overflow (out-of-flow decoration)
    even with body overflow-x hidden, making the page pannable sideways. */
 html {
 	overflow-x: hidden;
@@ -95,10 +53,9 @@ html {
 body {
 	margin: 0;
 	min-height: 100vh;
-	font-family:
-		system-ui,
+	font-family: system-ui,
 		-apple-system,
-		"Segoe UI",
+		\"Segoe UI\",
 		Roboto,
 		sans-serif;
 	background: var(--bg);
@@ -159,61 +116,6 @@ header.hero {
 	}
 }
 
-/* Aurora: blurred seed-tinted blobs behind the hero. The --grad-* vars are
-   registered @property colors, so the blobs re-tint smoothly with the seed. */
-.aurora {
-	position: absolute;
-	inset: -160px -260px -80px;
-	z-index: -1;
-	pointer-events: none;
-	filter: blur(90px);
-	opacity: var(--aur-op);
-}
-.aurora i {
-	position: absolute;
-	border-radius: 50%;
-	will-change: transform;
-}
-.aurora i:nth-child(1) {
-	width: 480px;
-	height: 480px;
-	left: 4%;
-	top: -6%;
-	background: radial-gradient(circle, var(--grad-b), transparent 70%);
-	animation: aur-a 26s ease-in-out infinite alternate;
-}
-.aurora i:nth-child(2) {
-	width: 420px;
-	height: 420px;
-	right: 6%;
-	top: 12%;
-	background: radial-gradient(circle, var(--grad-c), transparent 70%);
-	animation: aur-b 32s ease-in-out infinite alternate;
-}
-.aurora i:nth-child(3) {
-	width: 360px;
-	height: 360px;
-	left: 38%;
-	bottom: -14%;
-	background: radial-gradient(circle, var(--accent), transparent 70%);
-	animation: aur-c 38s ease-in-out infinite alternate;
-}
-@keyframes aur-a {
-	to {
-		transform: translate(120px, 60px) scale(1.15);
-	}
-}
-@keyframes aur-b {
-	to {
-		transform: translate(-140px, 40px) scale(0.9);
-	}
-}
-@keyframes aur-c {
-	to {
-		transform: translate(80px, -70px) scale(1.2);
-	}
-}
-
 /* Phone mockup: every surface reads the site vars, so seed rotation and
    card hover re-tint the whole "device". */
 /* Float bobs the wrapper; tilt sits on .phone so hover can transition
@@ -242,10 +144,8 @@ header.hero {
 	border-radius: 40px;
 	transform: rotate(var(--tilt)) scale(var(--ph-scale, 1));
 	background: var(--card-highest);
-	border: 1px solid var(--outline-v);
-	box-shadow:
-		0 34px 90px -18px var(--accent-glow),
-		0 26px 60px var(--shadow-card);
+	border: 1px solid var(--card-line, transparent);
+	box-shadow: 0 26px 60px var(--shadow-card);
 	transition:
 		transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1),
 		background-color var(--recolor, 1.6s) ease,
@@ -296,7 +196,6 @@ header.hero {
 	height: 11px;
 }
 .p-clock {
-	font-family: var(--font-d);
 	font-size: 38px;
 	font-weight: 600;
 	letter-spacing: -0.02em;
@@ -369,7 +268,7 @@ header.hero {
 	height: 26px;
 	border-radius: 50%;
 	flex-shrink: 0;
-	background: linear-gradient(135deg, var(--grad-b), var(--grad-c));
+	background: linear-gradient(135deg, var(--accent), var(--grad-c));
 }
 .p-dot.alt {
 	border-radius: 8px;
@@ -404,24 +303,15 @@ header.hero {
 	width: 112px;
 	height: 112px;
 	margin-bottom: 28px;
-	filter: drop-shadow(0 12px 36px var(--accent-glow));
 	transition: filter var(--recolor, 1.6s) ease;
 }
 h1.title {
 	margin: 0 0 14px;
-	font-family: var(--font-d);
-	font-size: clamp(38px, 7vw, 58px);
-	font-weight: 700;
-	letter-spacing: -0.03em;
-	background: linear-gradient(
-		100deg,
-		var(--grad-a) 20%,
-		var(--grad-b) 55%,
-		var(--grad-c) 85%
-	);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
+	font-size: clamp(40px, 6.4vw, 60px);
+	font-weight: 800;
+	letter-spacing: -0.035em;
+	color: var(--text);
+	transition: color var(--recolor, 1.6s) ease;
 }
 .tagline {
 	margin: 0 auto 40px;
@@ -438,13 +328,15 @@ h1.title {
 	flex-wrap: wrap;
 }
 a.btn {
-	display: inline-block;
-	padding: 16px 32px;
+	display: inline-flex;
+	align-items: center;
+	gap: 9px;
+	padding: 16px 26px;
 	border-radius: 999px;
 	text-decoration: none;
-	font-family: var(--font-d);
-	font-size: 15.5px;
+	font-size: 15px;
 	font-weight: 600;
+	line-height: 1;
 	transition:
 		filter 0.15s ease,
 		transform 0.12s ease,
@@ -471,7 +363,6 @@ a.btn:active {
 
 /* Real heading, not an eyebrow: h2 outranks body copy in size and weight. */
 .section-title {
-	font-family: var(--font-d);
 	font-size: clamp(25px, 3.4vw, 33px);
 	font-weight: 700;
 	letter-spacing: -0.02em;
@@ -483,6 +374,8 @@ a.btn:active {
 
 /* Endless drifting rail. */
 .marquee {
+	max-width: 1440px;
+	margin-inline: auto;
 	overflow: hidden;
 	padding: 20px 0 56px;
 	margin-bottom: -32px;
@@ -535,6 +428,7 @@ a.tcard {
 	display: flex;
 	align-items: center;
 	gap: 16px;
+	border: 1px solid var(--card-line, transparent);
 }
 a.tcard:hover {
 	transform: translateY(-4px);
@@ -542,27 +436,8 @@ a.tcard:hover {
 	border-radius: 22px;
 }
 
-/* Cursor spotlight: --mx/--my set by a delegated pointermove in site.js. */
 a.tcard::after,
-.info::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-	background: radial-gradient(
-		240px circle at var(--mx, 50%) var(--my, 50%),
-		var(--spot),
-		transparent 65%
-	);
-	opacity: 0;
-	transition: opacity 0.3s ease;
-	pointer-events: none;
-}
 a.tcard:hover::after,
-.info:hover::after {
-	opacity: 1;
-}
-
 /* Tonal palette strip slides up from the card's bottom edge on hover. */
 .pstrip {
 	position: absolute;
@@ -588,7 +463,6 @@ a.tcard:focus-visible .pstrip {
 	gap: 3px;
 }
 .tname {
-	font-family: var(--font-d);
 	font-size: 16px;
 	font-weight: 600;
 	white-space: nowrap;
@@ -648,16 +522,14 @@ a.tcard:hover .tswatch {
 	background: var(--card);
 	border-radius: 28px;
 	padding: 28px;
-	transition:
-		background-color var(--recolor, 1.6s) ease,
-		transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+	transition: background-color var(--recolor, 1.6s) ease;
+	border: 1px solid var(--card-line, transparent);
 }
 .info:hover {
-	transform: translateY(-3px);
+	background: var(--card-high);
 }
 .info h3 {
 	margin: 0 0 10px;
-	font-family: var(--font-d);
 	font-size: 17px;
 	font-weight: 600;
 }
@@ -854,7 +726,6 @@ a.tcard:hover .tswatch {
 	cursor: pointer;
 	padding: 15px 22px;
 	font-size: 15px;
-	font-family: var(--font-d);
 	font-weight: 600;
 	transition:
 		background-color var(--recolor, 1.6s) ease,
@@ -966,11 +837,9 @@ a.tcard:hover .tswatch {
 	min-width: 120px;
 }
 .statnum {
-	font-family: var(--font-d);
 	font-size: clamp(34px, 5vw, 46px);
 	font-weight: 700;
 	letter-spacing: -0.02em;
-	color: var(--grad-b);
 	transition: color var(--recolor, 1.6s) ease;
 }
 .statlabel {
@@ -1055,7 +924,15 @@ footer {
 footer a {
 	color: var(--accent);
 	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	padding: 0 4px;
 	transition: color var(--recolor, 1.6s) ease;
+}
+footer a:hover {
+	text-decoration: underline;
+	text-underline-offset: 3px;
 }
 .sep {
 	width: 4px;
@@ -1159,6 +1036,7 @@ a.btn.backbtn {
 	background: var(--card);
 	margin-bottom: 12px;
 	transition: background-color var(--recolor, 1.6s) ease;
+	border: 1px solid var(--card-line, transparent);
 }
 .compare {
 	border-collapse: collapse;
@@ -1232,6 +1110,7 @@ a.btn.backbtn {
 	margin-bottom: 12px;
 	overflow: hidden;
 	transition: background-color var(--recolor, 1.6s) ease;
+	border: 1px solid var(--card-line, transparent);
 }
 .faq details[open] {
 	background: var(--card-high);
@@ -1244,7 +1123,6 @@ a.btn.backbtn {
 	cursor: pointer;
 	list-style: none;
 	padding: 18px 22px;
-	font-family: var(--font-d);
 	font-size: 15px;
 	font-weight: 600;
 }
@@ -1318,42 +1196,11 @@ html {
 	}
 }
 
-h1.title {
-	background-size: 220% 100%;
-	animation:
-		rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s forwards,
-		shimmer 9s ease-in-out infinite alternate;
-}
-@keyframes shimmer {
-	from {
-		background-position: 0% 0;
-	}
-	to {
-		background-position: 100% 0;
-	}
-}
-
 /* Animation, not transition: a transition here would REPLACE the element's
    own list (.info etc.) and kill its var(--recolor, 1.6s) recolor. */
 /* Gated on .js (set pre-paint in each page's head): without scripting the
    content stays visible instead of sitting at opacity 0 forever. */
-.js .reveal {
-	opacity: 0;
-	transform: translateY(22px);
-}
-.reveal.in {
-	opacity: 1;
-	transform: none;
-	animation: reveal-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-@keyframes reveal-in {
-	from {
-		opacity: 0;
-		transform: translateY(22px);
-	}
-}
-
-a.btn:focus-visible,
+.js a.btn:focus-visible,
 a.tcard:focus-visible,
 .faq summary:focus-visible {
 	outline: 2px solid var(--accent);
@@ -1373,11 +1220,7 @@ a.tcard:focus-visible,
 	}
 	.hero-copy > *,
 	.hero-phone,
-	.js .reveal {
-		opacity: 1;
-		transform: none;
-	}
-	.marquee-track {
+	.js .marquee-track {
 		animation: none !important;
 	}
 }
@@ -1467,6 +1310,7 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 	align-items: center;
 	gap: 16px;
 	transition: background-color var(--recolor, 1.6s) ease;
+	border: 1px solid var(--card-line, transparent);
 }
 .sk-swatch {
 	width: 64px;
@@ -1527,4 +1371,187 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 }
 .themes-grid .loading {
 	grid-column: 1 / -1;
+}
+
+.closer {
+	margin: 72px 0 8px;
+	padding: 48px 32px;
+	border-radius: 28px;
+	background: var(--card);
+	text-align: center;
+	transition: background-color var(--recolor, 1.6s) ease;
+	border: 1px solid var(--card-line, transparent);
+}
+.closer h2 {
+	margin: 0 0 12px;
+	font-size: clamp(24px, 3.2vw, 30px);
+	font-weight: 700;
+	letter-spacing: -0.025em;
+	color: var(--text);
+	transition: color var(--recolor, 1.6s) ease;
+}
+.closer p {
+	margin: 0 auto 28px;
+	max-width: 46ch;
+	color: var(--body2);
+	font-size: 15.5px;
+	line-height: 1.7;
+	transition: color var(--recolor, 1.6s) ease;
+}
+.closer .cta {
+	justify-content: center;
+}
+
+.closer-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	justify-content: center;
+	margin-top: 28px;
+}
+.closer-tags span {
+	padding: 8px 14px;
+	border-radius: 999px;
+	background: var(--card-high);
+	color: var(--body2);
+	font-size: 12.5px;
+	font-weight: 600;
+	transition:
+		background-color var(--recolor, 1.6s) ease,
+		color var(--recolor, 1.6s) ease;
+}
+
+@media (max-width: 768px) {
+	.tablewrap {
+		overflow-x: visible;
+		background: none;
+		border: none;
+		padding: 0;
+	}
+	.compare,
+	.compare tbody,
+	.compare tr,
+	.compare th,
+	.compare td {
+		display: block;
+		min-width: 0;
+	}
+	.compare thead {
+		display: none;
+	}
+	.compare tr {
+		background: var(--card);
+		border-radius: 24px;
+		padding: 16px 18px;
+		margin-bottom: 12px;
+		transition: background-color var(--recolor, 1.6s) ease;
+	}
+	.compare tbody th,
+	.compare th:first-child {
+		position: static;
+		background: none;
+		padding: 0 0 10px;
+		border: none;
+		font-size: 15px;
+		white-space: normal;
+	}
+	.compare td,
+	.compare td:nth-child(2) {
+		background: none;
+		border: none;
+		padding: 5px 0;
+		font-weight: 400;
+		display: block;
+		text-align: right;
+	}
+	/* Floated, so a footnote marker stays beside its value instead of
+	   becoming a third flex item flung to the edge. */
+	.compare td::before {
+		content: attr(data-m);
+		float: left;
+		max-width: 45%;
+		text-align: left;
+		color: var(--subtle);
+		font-size: 12.5px;
+	}
+	.compare thead th,
+	.compare tr:last-child th,
+	.compare tr:last-child td,
+	.compare th:last-child,
+	.compare td:last-child {
+		padding-top: 0;
+		padding-bottom: 0;
+		padding-right: 0;
+	}
+	.compare tbody th,
+	.compare th:first-child {
+		padding-left: 0;
+	}
+	.compare td:nth-child(2) {
+		color: var(--accent);
+		font-weight: 600;
+	}
+}
+
+.pager {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	margin: 8px 0 48px;
+}
+.pagebtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 44px;
+	padding: 12px 20px;
+	border: none;
+	border-radius: 999px;
+	cursor: pointer;
+	background: var(--card-high);
+	color: var(--text);
+	font: 600 14px/1 inherit;
+	font-family: inherit;
+	transition:
+		background-color var(--recolor, 1.6s) ease,
+		color var(--recolor, 1.6s) ease,
+		filter 0.15s ease,
+		transform 0.12s ease,
+		border-radius 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.pagebtn:hover:not(:disabled) {
+	filter: brightness(1.08);
+	transform: translateY(-1px);
+}
+.pagebtn:active:not(:disabled) {
+	transform: scale(0.97);
+	border-radius: 18px;
+}
+.pagebtn:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+.pagebtn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 3px;
+}
+.pagebtn svg {
+	display: block;
+	flex-shrink: 0;
+}
+.pagecount {
+	color: var(--body2);
+	font-size: 14px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	transition: color var(--recolor, 1.6s) ease;
+}
+@media (max-width: 480px) {
+	.pager {
+		gap: 10px;
+	}
+	.pagebtn {
+		padding: 12px 16px;
+	}
 }

@@ -93,132 +93,200 @@ const MAX_REPORTS_PER_DAY = 3;
 // Steps are fixed tonal stops; MCU roles land between them (dark surface is
 // tone 4, surfaceContainer 9), so overrides act as hue/chroma anchors and the
 // role keeps its own tone. Mirrors assets/site.js so both previews agree.
-const STEP_TONE = {
-	0: 100,
-	10: 99,
-	50: 95,
-	100: 90,
-	200: 80,
-	300: 70,
-	400: 60,
-	500: 50,
-	600: 40,
-	700: 30,
-	800: 20,
-	900: 10,
-	1000: 0,
+const relLum = (hex) => {
+	const c = [1, 3, 5].map((i) => {
+		const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+		return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+	});
+	return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 };
 
-const ROW_PALETTE = {
-	system_accent1: "primaryPalette",
-	system_accent2: "secondaryPalette",
-	system_accent3: "tertiaryPalette",
-	system_neutral1: "neutralPalette",
-	system_neutral2: "neutralVariantPalette",
+const contrast = (a, b) => {
+	const [x, y] = [relLum(a), relLum(b)].sort((p, q) => q - p);
+	return (x + 0.05) / (y + 0.05);
 };
 
-// MCU role -> the Android palette row the app draws it from.
-const ROLE_ROW = {
-	surface: "system_neutral1",
-	surfaceContainer: "system_neutral1",
-	surfaceContainerHigh: "system_neutral1",
-	onSurface: "system_neutral1",
-	onSurfaceVariant: "system_neutral2",
-	primary: "system_accent1",
-	onPrimary: "system_accent1",
-	secondaryContainer: "system_accent2",
-	onSecondaryContainer: "system_accent2",
-	tertiary: "system_accent3",
-};
-
-function anchorsByRow(overrides) {
-	const rows = {};
-	for (const [key, hex] of Object.entries(overrides ?? {})) {
-		if (!HEX_COLOR.test(hex)) continue;
-		const cut = key.lastIndexOf("_");
-		const row = key.slice(0, cut);
-		const tone = STEP_TONE[key.slice(cut + 1)];
-		// system_error has no palette on the page; skip it.
-		if (tone == null || !ROW_PALETTE[row]) continue;
-		(rows[row] ??= []).push({ tone, hex });
+function ensureContrast(fg, bg, min = 4.5) {
+	if (contrast(fg, bg) >= min) return fg;
+	const hct = Hct.fromInt(argbFromHex(fg));
+	const dir = relLum(bg) > 0.18 ? -1 : 1;
+	let out = fg;
+	for (let t = hct.tone + dir * 3; t >= 0 && t <= 100; t += dir * 3) {
+		out = hexFromArgb(Hct.from(hct.hue, hct.chroma, t).toInt());
+		if (contrast(out, bg) >= min) return out;
 	}
-	for (const list of Object.values(rows)) list.sort((a, b) => a.tone - b.tone);
-	return rows;
+	return out;
 }
 
-// Hue/chroma interpolated between the surrounding anchors, tone untouched so
-// role contrast survives. Past the last anchor the nearest one is extended.
-// `snap` takes an anchor verbatim when the wanted tone is that close to it,
-// so a role sitting near an Android step shows the theme's literal hex.
-function toneFromAnchors(anchors, tone, snap = 0) {
-	let lo = null;
-	let hi = null;
-	for (const a of anchors) {
-		if (a.tone <= tone) lo = a;
-		if (a.tone >= tone && !hi) hi = a;
-	}
-	if (lo?.tone === tone) return lo.hex;
-	if (snap) {
-		const near = [lo, hi]
-			.filter(Boolean)
-			.sort(
-				(a, b) => Math.abs(a.tone - tone) - Math.abs(b.tone - tone),
-			)[0];
-		if (near && Math.abs(near.tone - tone) <= snap) return near.hex;
-	}
-	const hct = (a) => Hct.fromInt(argbFromHex(a.hex));
-	if (!lo || !hi) {
-		const edge = hct(lo ?? hi);
-		return hexFromArgb(Hct.from(edge.hue, edge.chroma, tone).toInt());
-	}
-	const a = hct(lo);
-	const b = hct(hi);
-	const f = (tone - lo.tone) / (hi.tone - lo.tone);
-	const dh = ((b.hue - a.hue + 540) % 360) - 180;
+// Port of the app's palette pipeline (ColorSchemeUtil.generateColorPalette,
+// ColorModifiers.modifyColors, CommunityThemePalette.derive, DynamicColors).
+// Order matters: palette, then modifiers, then the theme's own hexes, then
+// pitch black. Roles read fixed indices out of the finished palette.
+const TONES = [100, 99, 95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0];
+const TINTS = TONES.map((t) => t / 100);
+const SHADES = [
+	"0",
+	"10",
+	"50",
+	"100",
+	"200",
+	"300",
+	"400",
+	"500",
+	"600",
+	"700",
+	"800",
+	"900",
+	"1000",
+];
+const ROW_NAMES = [
+	"system_accent1",
+	"system_accent2",
+	"system_accent3",
+	"system_neutral1",
+	"system_neutral2",
+	"system_error",
+];
+
+// [row, darkIndex, lightIndex, darkLightnessAdjustment, lightLightnessAdjustment]
+const ROLE_MAP = {
+	primary: [0, 4, 8],
+	primaryContainer: [0, 9, 3],
+	onPrimaryContainer: [0, 3, 11],
+	onPrimary: [0, 10, 0],
+	secondaryContainer: [1, 9, 3],
+	onSecondaryContainer: [1, 3, 11],
+	tertiary: [2, 4, 8],
+	surface: [3, 11, 1, -25, -1],
+	onSurface: [3, 2, 10],
+	surfaceContainer: [3, 10, 2, -42, -2],
+	surfaceContainerHigh: [3, 10, 1, null, -4],
+	surfaceContainerHighest: [3, 10, 1, 3, -5],
+	surfaceBright: [3, 10, 1, 13, -2],
+	onSurfaceVariant: [4, 2, 10],
+	outlineVariant: [4, 9, 4],
+};
+
+function toneOf(hex) {
+	return Hct.fromInt(argbFromHex(hex)).tone;
+}
+
+function atTone(hex, tone) {
+	const h = Hct.fromInt(argbFromHex(hex));
 	return hexFromArgb(
-		Hct.from(
-			(a.hue + dh * f + 360) % 360,
-			a.chroma + (b.chroma - a.chroma) * f,
-			tone,
-		).toInt(),
+		Hct.from(h.hue, h.chroma, Math.max(0, Math.min(100, tone))).toInt(),
 	);
 }
 
-// Resolves a palette shade to the theme's real color: overrides win, then a
-// custom secondary/tertiary seed, then the scheme. `fixed` marks values that
-// already carry the theme's own numbers, so the saturation and lightness
-// sliders must not be applied to them a second time.
-function makeResolver(scheme, theme, spec, Ctor) {
-	const rows = anchorsByRow(theme?.colorOverrides);
-	const customPalette = (hex) =>
-		HEX_COLOR.test(hex ?? "")
-			? new Ctor(Hct.fromInt(argbFromHex(hex)), true, 0, spec)
-					.primaryPalette
-			: null;
-	const swapped = {
-		system_accent2: customPalette(theme?.secondaryColor),
-		system_accent3: customPalette(theme?.tertiaryColor),
-	};
-	const shade = (row, tone, snap) => {
-		if (rows[row]?.length) {
-			return { hex: toneFromAnchors(rows[row], tone, snap), fixed: true };
+function shiftLightness(hex, lightness, idx) {
+	let f = (lightness - 100) / 1000;
+	if (idx === 0 || idx === 12) f = 0;
+	else if (idx === 1) f /= 10;
+	else if (idx === 2) f /= 2;
+	return atTone(hex, 100 * (TINTS[idx] + f));
+}
+
+function adjustLightness(hex, percent) {
+	const tone = toneOf(hex);
+	const pct = Math.max(-100, Math.min(100, percent));
+	return atTone(hex, tone + tone * (pct / 100));
+}
+
+function buildRows(seedHex, style, spec, dark, sliders, theme) {
+	const Ctor = SCHEME_BY_STYLE[style] ?? SchemeTonalSpot;
+	const toneList = (palette) =>
+		TONES.map((t) => hexFromArgb(palette.tone(t)));
+	const scheme = new Ctor(Hct.fromInt(argbFromHex(seedHex)), dark, 0, spec);
+	const rows = [
+		scheme.primaryPalette,
+		scheme.secondaryPalette,
+		scheme.tertiaryPalette,
+		scheme.neutralPalette,
+		scheme.neutralVariantPalette,
+		scheme.errorPalette,
+	].map(toneList);
+
+	const ownPalette = (hex) =>
+		toneList(
+			new Ctor(Hct.fromInt(argbFromHex(hex)), dark, 0, spec)
+				.primaryPalette,
+		);
+	if (HEX_COLOR.test(theme?.secondaryColor ?? "")) {
+		rows[1] = ownPalette(theme.secondaryColor);
+	}
+	if (HEX_COLOR.test(theme?.tertiaryColor ?? "")) {
+		rows[2] = ownPalette(theme.tertiaryColor);
+	}
+
+	const { accentSat, bgSat, bgLight } = sliders;
+	const mono = style === "MONOCHROMATIC";
+	const rainbow = style === "RAINBOW";
+	const pitch = Boolean(theme?.pitchBlack);
+
+	rows.forEach((row, i) => {
+		const accent = i <= 2 || i === 5;
+		const neutral = i === 3 || i === 4;
+		// The app modifies shades 1..12; shade 0 is left alone.
+		for (let j = 1; j < row.length; j++) {
+			if (accent && accentSat !== 100 && !mono) {
+				row[j] = adjustSaturation(row[j], accentSat);
+			} else if (neutral) {
+				if (bgLight !== 100 && !mono) {
+					row[j] = shiftLightness(row[j], bgLight, j);
+				}
+				if (bgSat !== 100 && !mono && !rainbow) {
+					row[j] = adjustSaturation(row[j], bgSat);
+				}
+			}
+			if (mono) row[j] = shiftLightness(row[j], bgLight, j);
 		}
-		const palette = swapped[row] ?? scheme[ROW_PALETTE[row]];
-		return { hex: hexFromArgb(palette.tone(tone)), fixed: false };
+		if (neutral && pitch) row[11] = "#000000";
+	});
+
+	for (const [name, hex] of Object.entries(theme?.colorOverrides ?? {})) {
+		if (!HEX_COLOR.test(hex)) continue;
+		const cut = name.lastIndexOf("_");
+		const row = ROW_NAMES.indexOf(name.slice(0, cut));
+		const idx = SHADES.indexOf(name.slice(cut + 1));
+		if (row >= 0 && idx >= 0) rows[row][idx] = hex;
+	}
+
+	if (pitch) {
+		rows[3][11] = "#000000";
+		rows[4][11] = "#000000";
+	}
+
+	return rows;
+}
+
+function roleReader(rows, dark) {
+	return (name) => {
+		const [row, darkIdx, lightIdx, darkAdj, lightAdj] = ROLE_MAP[name];
+		const hex = rows[row][dark ? darkIdx : lightIdx];
+		const adj = dark ? darkAdj : lightAdj;
+		return adj == null ? hex : adjustLightness(hex, adj);
 	};
-	// A role's tone comes from the scheme itself, so this tracks whichever
-	// spec (2021/2025) built it instead of a hardcoded tone table. Accent
-	// roles land within a few tones of an Android step, so they snap to the
-	// theme's literal hex; neutrals must not, or the page/card/chip elevation
-	// tiers (tone 4/9/12 in dark) would all collapse onto one override.
-	const role = (name) => {
-		const base = hexFromArgb(scheme[name]);
-		const row = ROLE_ROW[name];
-		if (!row) return { hex: base, fixed: false };
-		const tone = Math.round(Hct.fromInt(argbFromHex(base)).tone);
-		return shade(row, tone, row.startsWith("system_accent") ? 5 : 0);
+}
+
+// Slider values for the active mode; the app ignores them for MONOCHROMATIC.
+function themeSliders(theme, isDark) {
+	if (!theme || theme.style === "MONOCHROMATIC") {
+		return { accentSat: 100, bgSat: 100, bgLight: 100 };
+	}
+	const light = !isDark && theme.modeSpecificThemes;
+	return {
+		accentSat:
+			(light ? theme.accentSaturationLight : theme.accentSaturation) ??
+			100,
+		bgSat:
+			(light
+				? theme.backgroundSaturationLight
+				: theme.backgroundSaturation) ?? 100,
+		bgLight:
+			(light
+				? theme.backgroundLightnessLight
+				: theme.backgroundLightness) ?? 100,
 	};
-	return { shade, role };
 }
 
 export default {
@@ -275,7 +343,9 @@ async function report(request, env) {
 		return json({ error: "not found" }, 404);
 	}
 
-	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
+	const ip = await hashIp(
+		request.headers.get("cf-connecting-ip") ?? "unknown",
+	);
 
 	// Rate limit across all themes by device OR ip so neither device
 	// rotation nor a VPN unlocks unlimited reports.
@@ -405,112 +475,44 @@ async function themePage(url, env) {
 	const spec = SPEC_BY_VERSION[theme.colorSpecVersion] ?? DEFAULT_SPEC;
 
 	const buildPalette = (isDark) => {
-		const scheme = new SchemeCtor(
-			Hct.fromInt(argbFromHex(seed)),
-			isDark,
-			0,
+		const rows = buildRows(
+			seed,
+			theme.style ?? "TONAL_SPOT",
 			spec,
+			isDark,
+			themeSliders(theme, isDark),
+			theme,
 		);
-		// Mode-specific themes carry light slider variants.
-		const light = !isDark && theme.modeSpecificThemes;
-		const accentSat = isMono
-			? 100
-			: ((light ? theme.accentSaturationLight : theme.accentSaturation) ??
-				100);
-		const bgSat = isMono
-			? 100
-			: ((light
-					? theme.backgroundSaturationLight
-					: theme.backgroundSaturation) ?? 100);
-		const bgLight = isMono
-			? 100
-			: ((light
-					? theme.backgroundLightnessLight
-					: theme.backgroundLightness) ?? 100);
+		const role = roleReader(rows, isDark);
+		const at = (row, tone) => rows[row][TONES.indexOf(tone)];
 
-		const { shade, role } = makeResolver(scheme, theme, spec, SchemeCtor);
-
-		// Sliders on surfaces, per-role tone floor/ceiling: dark surface =
-		// tone 4, raw shift lands on tone 0 = pure black page; floors keep
-		// bg/card/chip elevation steps apart. Overridden shades skip the
-		// sliders: the theme already baked them into the hex.
-		const plain = (name) => role(name).hex;
-		const accentRole = (name) => {
-			const r = role(name);
-			return r.fixed ? r.hex : adjustSaturation(r.hex, accentSat);
-		};
-		const surfaceRole = (name, minTone, maxTone) => {
-			const r = role(name);
-			return r.fixed
-				? r.hex
-				: shiftLightness(
-						adjustSaturation(r.hex, bgSat),
-						bgLight,
-						minTone,
-						maxTone,
-					);
-		};
-		// App ColorsScreen swatch, same construction as the gallery cards:
-		// square = neutral2 tone30, top half = accent1 tone80, bottom-left =
-		// accent3 tone70, bottom-right = accent2 tone60, center dot = seed.
-		const accentCell = (row, tone) => {
-			const s = shade(row, tone);
-			return s.fixed ? s.hex : adjustSaturation(s.hex, accentSat);
-		};
-		const surfaceCell = (row, tone) => {
-			const s = shade(row, tone);
-			return s.fixed
-				? s.hex
-				: shiftLightness(adjustSaturation(s.hex, bgSat), bgLight);
-		};
-
-		// Light ceilings sit well below the bg's tone 99: the default light
-		// scheme puts surface ~98 and surfaceContainer ~94, which reads as
-		// one flat sheet; 92/88 keep the elevation steps visible.
-		// A flat override ramp can leave the page, card and chip on the same
-		// tone, which reads as one sheet; nudge each tier off the one below.
-		const dir = isDark ? 1 : -1;
-		const bg = surfaceRole("surface", 4, 99);
-		const card = separate(
-			surfaceRole("surfaceContainer", 10, isDark ? 96 : 92),
-			bg,
-			dir,
-		);
-		const chip = separate(
-			surfaceRole("surfaceContainerHigh", 14, isDark ? 93 : 88),
-			card,
-			dir,
-		);
-
+		const accent = role("primary");
+		const tonal = role("primaryContainer");
 		const colors = {
-			bg,
-			text: plain("onSurface"),
-			subtle: alpha(plain("onSurfaceVariant"), 0.85),
-			chipText: plain("onSurfaceVariant"),
-			accent: accentRole("primary"),
-			onAccent: plain("onPrimary"),
-			card,
-			chip,
-			tonal: plain("secondaryContainer"),
-			onTonalBtn: plain("onSecondaryContainer"),
-			swHalf: accentCell("system_accent1", 80),
-			swQ1: accentCell("system_accent3", 70),
-			swQ2: accentCell("system_accent2", 60),
-			swSquare: surfaceCell("system_neutral2", 30),
+			bg: role("surface"),
+			text: role("onSurface"),
+			subtle: alpha(role("onSurfaceVariant"), 0.9),
+			body2: role("onSurfaceVariant"),
+			accent,
+			"on-accent": ensureContrast(role("onPrimary"), accent),
+			card: role("surfaceContainer"),
+			"card-high": role("surfaceContainerHigh"),
+			tonal,
+			"on-tonal": ensureContrast(role("onPrimaryContainer"), tonal),
+			"outline-v": role("outlineVariant"),
+			swHalf: at(0, 80),
+			swQ1: at(2, 70),
+			swQ2: at(1, 60),
+			swSquare: at(4, 30),
 			swCenter: seed,
 		};
-		return { scheme, accentSat, colors, shade };
+		return { rows, colors };
 	};
 
 	const dark = buildPalette(true);
 	const lightMode = buildPalette(false);
-	const scheme = dark.scheme;
-	const accentSat = dark.accentSat;
 	// Launcher gradient stops; a single favicon, so the dark palette drives it.
-	const logoStop = (tone) => {
-		const s = dark.shade("system_accent1", tone);
-		return s.fixed ? s.hex : adjustSaturation(s.hex, accentSat);
-	};
+	const logoStops = [dark.rows[0][4], dark.rows[0][8]];
 	const cssVars = (c) =>
 		Object.entries(c)
 			.map(([k, v]) => `--${k}: ${v};`)
@@ -535,8 +537,8 @@ async function themePage(url, env) {
 		encodeURIComponent(
 			`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
 				`<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-				`<stop offset="0" stop-color="${logoStop(70)}"/>` +
-				`<stop offset="1" stop-color="${logoStop(40)}"/>` +
+				`<stop offset="0" stop-color="${logoStops[0]}"/>` +
+				`<stop offset="1" stop-color="${logoStops[1]}"/>` +
 				`</linearGradient></defs>` +
 				`<circle cx="50" cy="50" r="50" fill="url(#g)"/>` +
 				`<g transform="translate(50,50) scale(1.5) translate(-50,-50) translate(26.777779,26.777779) scale(0.46444446)">` +
@@ -566,19 +568,9 @@ async function themePage(url, env) {
 <style>
   :root {
     ${cssVars(dark.colors)}
-    --aurOp: .3; --glow: 16%;
-    --font-d: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   @media (prefers-color-scheme: light) {
-    :root { ${cssVars(lightMode.colors)} --aurOp: .5; --glow: 28%; }
-  }
-  /* Same display face as the gallery site; GitHub Pages serves it with
-     CORS enabled, so the cross-origin font load is allowed. */
-  @font-face {
-    font-family: "Outfit";
-    src: url("https://mahmud0808.github.io/ColorBlendr-Themes/assets/fonts/outfit-var.woff2") format("woff2-variations");
-    font-weight: 100 900;
-    font-display: swap;
+    :root { ${cssVars(lightMode.colors)} }
   }
   * { box-sizing: border-box; }
   body {
@@ -590,24 +582,6 @@ async function themePage(url, env) {
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
-  /* Aurora, mirroring the gallery site's backdrop. */
-  .aurora {
-    position: fixed; inset: -20%; z-index: 0; pointer-events: none;
-    filter: blur(90px); opacity: var(--aurOp);
-  }
-  .aurora i { position: absolute; border-radius: 50%; will-change: transform; }
-  .aurora i:nth-child(1) {
-    width: 46vmax; height: 46vmax; left: -8%; top: -10%;
-    background: radial-gradient(circle, var(--accent), transparent 70%);
-    animation: aur-a 26s ease-in-out infinite alternate;
-  }
-  .aurora i:nth-child(2) {
-    width: 38vmax; height: 38vmax; right: -6%; bottom: -12%;
-    background: radial-gradient(circle, var(--swQ2, var(--tonal)), transparent 70%);
-    animation: aur-b 32s ease-in-out infinite alternate;
-  }
-  @keyframes aur-a { to { transform: translate(10vmax, 6vmax) scale(1.15); } }
-  @keyframes aur-b { to { transform: translate(-9vmax, -5vmax) scale(.9); } }
   @keyframes rise {
     from { opacity: 0; transform: translateY(18px) scale(.98); }
     to { opacity: 1; transform: none; }
@@ -626,8 +600,8 @@ async function themePage(url, env) {
     width: min(400px, calc(100vw - 32px)); margin: 24px;
     padding: 40px 32px 32px; text-align: center;
     background: var(--card); border-radius: 28px;
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-    box-shadow: 0 30px 80px -24px color-mix(in srgb, var(--accent) var(--glow), transparent);
+    border: 1px solid var(--outline-v);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, .45);
     animation: rise .5s cubic-bezier(.2,.7,.2,1) backwards;
   }
   .card > * { animation: fadeup .45s cubic-bezier(.2,.7,.2,1) backwards; }
@@ -639,9 +613,7 @@ async function themePage(url, env) {
   .card > :nth-child(7) { animation-delay: .26s; }
   .card > :nth-child(8) { animation-delay: .3s; }
   .brand {
-    font-family: var(--font-d);
-    font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
-    color: var(--subtle); margin-bottom: 28px;
+    font-size: 13px; font-weight: 600; color: var(--subtle); margin-bottom: 28px;
   }
   /* .card > * sets fadeup on every child and :nth-child(2) sets its delay,
      both (0,2,0); matching that specificity here keeps pop and its delay. */
@@ -657,38 +629,37 @@ async function themePage(url, env) {
     stroke: color-mix(in srgb, var(--text) 22%, transparent);
     stroke-width: 1;
   }
-  h1 { margin: 0 0 4px; font-family: var(--font-d); font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+  h1 { margin: 0 0 6px; font-size: clamp(26px, 7vw, 32px); font-weight: 800; letter-spacing: -.03em; }
   .author { color: var(--subtle); margin: 0 0 16px; font-size: 14px; }
-  .desc { color: var(--chipText); font-size: 15px; line-height: 1.6; margin: 0 0 20px; }
+  .desc { color: var(--body2); font-size: 15px; line-height: 1.6; margin: 0 0 20px; }
   .chips { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 8px 14px; border-radius: 999px;
-    background: var(--chip); color: var(--chipText);
+    background: var(--card-high); color: var(--body2);
     font-size: 13px; font-weight: 600;
     transition: transform .2s cubic-bezier(.2,.7,.2,1);
   }
   .chip:hover { transform: translateY(-2px); }
   .chip svg { display: block; }
   a.btn {
-    display: block; padding: 15px 24px; border-radius: 999px; text-decoration: none;
-    font-family: var(--font-d); font-size: 15px; font-weight: 600;
-    transition: filter .15s ease, transform .15s cubic-bezier(.2,.7,.2,1),
-                border-radius .25s cubic-bezier(.2,.7,.2,1), box-shadow .2s ease;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 16px 26px; border-radius: 999px; text-decoration: none;
+    font-size: 15px; font-weight: 600; line-height: 1;
+    transition: filter .15s ease, transform .12s ease,
+                border-radius .25s cubic-bezier(.2,.7,.2,1);
   }
-  a.btn:hover { filter: brightness(1.06); transform: translateY(-2px); }
+  a.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
   a.btn:active { transform: scale(.97); border-radius: 18px; }
-  .open { background: var(--accent); color: var(--onAccent); }
-  .open:hover { box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 35%, transparent); }
-  .get { background: var(--tonal); color: var(--onTonalBtn); margin-top: 10px; }
+  .open { background: var(--accent); color: var(--on-accent); }
+  .get { background: var(--tonal); color: var(--on-tonal); margin-top: 10px; }
   @media (prefers-reduced-motion: reduce) {
-    .card, .card > *, .aurora i { animation: none; }
+    .card, .card > * { animation: none; }
     .tswatch, .chip, a.btn { transition: none; }
   }
 </style>
 </head>
 <body>
-<div class="aurora" aria-hidden="true"><i></i><i></i></div>
 <main class="card">
   <div class="brand">ColorBlendr Community</div>
   ${swatch}
@@ -715,26 +686,9 @@ async function themePage(url, env) {
 
 // Pushes an elevation tier off the tone of the one below it when a theme's
 // overrides flatten the ramp. dir: +1 dark (tiers get lighter), -1 light.
-function separate(hex, belowHex, dir, min = 3) {
-	const hct = Hct.fromInt(argbFromHex(hex));
-	const below = Hct.fromInt(argbFromHex(belowHex)).tone;
-	const need = below + dir * min;
-	if (dir > 0 ? hct.tone >= need : hct.tone <= need) return hex;
-	const tone = Math.max(0, Math.min(100, need));
-	return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
-}
 
 // Port of the app's CAM16 lightness slider (ColorUtil.shiftLightness) with
 // optional tone bounds so page surfaces never collapse to black/white.
-function shiftLightness(hex, lightness, minTone = 0, maxTone = 100) {
-	const hct = Hct.fromInt(argbFromHex(hex));
-	const tone = Math.max(
-		minTone,
-		Math.min(maxTone, hct.tone + (lightness - 100) / 10),
-	);
-	if (tone === hct.tone) return hex;
-	return hexFromArgb(Hct.from(hct.hue, hct.chroma, tone).toInt());
-}
 
 // Port of the app's CAM16 saturation slider (ColorUtil.adjustSaturation);
 // Hct = same hue/chroma/lstar space as Cam.
@@ -769,7 +723,9 @@ async function vote(request, env) {
 		return json({ error: "not found" }, 404);
 	}
 
-	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
+	const ip = await hashIp(
+		request.headers.get("cf-connecting-ip") ?? "unknown",
+	);
 
 	// Identity = device OR ip, so a VPN (new ip, same device) and device
 	// rotation (same ip, new device) both resolve to the existing vote.
@@ -829,7 +785,9 @@ async function download(request, env) {
 		return json({ error: "not found" }, 404);
 	}
 
-	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
+	const ip = await hashIp(
+		request.headers.get("cf-connecting-ip") ?? "unknown",
+	);
 
 	// One download per identity (device OR ip) per theme.
 	const existing = await env.DB.prepare(
@@ -989,7 +947,9 @@ async function upload(request, env) {
 		return json({ error: "verification failed" }, 403);
 	}
 
-	const ip = await hashIp(request.headers.get("cf-connecting-ip") ?? "unknown");
+	const ip = await hashIp(
+		request.headers.get("cf-connecting-ip") ?? "unknown",
+	);
 	const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
 	const recent = await env.DB.prepare(
 		"SELECT COUNT(*) AS c FROM uploads WHERE (device = ? OR ip = ?) AND created > ?",
