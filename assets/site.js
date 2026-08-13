@@ -353,12 +353,6 @@ function applySiteSeed(seedHex, theme) {
 		"--outline-v": role("outlineVariant"),
 		"--grad-c": role("tertiary"),
 	};
-	// A theme may paint the page and its containers identically (pitch black);
-	// only then does a card need an edge to exist at all.
-	vars["--card-line"] =
-		contrast(vars["--card"], vars["--bg"]) < 1.04
-			? vars["--outline-v"]
-			: "transparent";
 	for (const [k, v] of Object.entries(vars)) {
 		document.documentElement.style.setProperty(k, v);
 	}

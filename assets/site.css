@@ -144,7 +144,6 @@ header.hero {
 	border-radius: 40px;
 	transform: rotate(var(--tilt)) scale(var(--ph-scale, 1));
 	background: var(--card-highest);
-	border: 1px solid var(--card-line, transparent);
 	box-shadow: 0 26px 60px var(--shadow-card);
 	transition:
 		transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1),
@@ -428,7 +427,6 @@ a.tcard {
 	display: flex;
 	align-items: center;
 	gap: 16px;
-	border: 1px solid var(--card-line, transparent);
 }
 a.tcard:hover {
 	transform: translateY(-4px);
@@ -523,7 +521,6 @@ a.tcard:hover .tswatch {
 	border-radius: 28px;
 	padding: 28px;
 	transition: background-color var(--recolor, 1.6s) ease;
-	border: 1px solid var(--card-line, transparent);
 }
 .info:hover {
 	background: var(--card-high);
@@ -1036,7 +1033,6 @@ a.btn.backbtn {
 	background: var(--card);
 	margin-bottom: 12px;
 	transition: background-color var(--recolor, 1.6s) ease;
-	border: 1px solid var(--card-line, transparent);
 }
 .compare {
 	border-collapse: collapse;
@@ -1110,7 +1106,6 @@ a.btn.backbtn {
 	margin-bottom: 12px;
 	overflow: hidden;
 	transition: background-color var(--recolor, 1.6s) ease;
-	border: 1px solid var(--card-line, transparent);
 }
 .faq details[open] {
 	background: var(--card-high);
@@ -1310,7 +1305,6 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 	align-items: center;
 	gap: 16px;
 	transition: background-color var(--recolor, 1.6s) ease;
-	border: 1px solid var(--card-line, transparent);
 }
 .sk-swatch {
 	width: 64px;
@@ -1380,7 +1374,6 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 	background: var(--card);
 	text-align: center;
 	transition: background-color var(--recolor, 1.6s) ease;
-	border: 1px solid var(--card-line, transparent);
 }
 .closer h2 {
 	margin: 0 0 12px;
@@ -1425,7 +1418,6 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 	.tablewrap {
 		overflow-x: visible;
 		background: none;
-		border: none;
 		padding: 0;
 	}
 	.compare,
