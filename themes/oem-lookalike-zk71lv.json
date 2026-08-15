@@ -1,0 +1,21 @@
+{
+  "id": "oem-lookalike-zk71lv",
+  "schemaVersion": 1,
+  "name": "OEM lookalike",
+  "description": "light mode with blue color and dark mode with white color",
+  "author": "",
+  "style": "VIBRANT",
+  "seedColor": "#004CFF",
+  "accentSaturation": 0,
+  "backgroundSaturation": 0,
+  "backgroundLightness": 0,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 200,
+  "backgroundSaturationLight": 100,
+  "backgroundLightnessLight": 200,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": false,
+  "createdAt": 1786806849
+}
