@@ -1,0 +1,17 @@
+{
+  "id": "pixel-android-11-style-t6qm83",
+  "schemaVersion": 1,
+  "name": "Pixel Lime",
+  "description": "Pixel lime Material You color palette.",
+  "author": "rsdn",
+  "style": "VIBRANT",
+  "seedColor": "#D5D70A",
+  "accentSaturation": 200,
+  "backgroundSaturation": 110,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1786889293
+}
