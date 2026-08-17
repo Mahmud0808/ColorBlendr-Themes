@@ -488,15 +488,30 @@ async function themePage(url, env) {
 
 		const accent = role("primary");
 		const tonal = role("primaryContainer");
+
+		// Pitch black (and themes that override the neutral shades to #000)
+		// can flatten surface and the container roles onto the same black, so
+		// the card and its chips lose every edge. Lift the containers to a
+		// tone floor above the surface; themes with real separation already
+		// clear it untouched.
+		const surface = role("surface");
+		const surfaceTone = toneOf(surface);
+		const elevated = (name, floor) => {
+			const hex = role(name);
+			if (!isDark) return hex;
+			const min = surfaceTone + floor;
+			return toneOf(hex) >= min ? hex : atTone(hex, min);
+		};
+
 		const colors = {
-			bg: role("surface"),
+			bg: surface,
 			text: role("onSurface"),
 			subtle: alpha(role("onSurfaceVariant"), 0.9),
 			body2: role("onSurfaceVariant"),
 			accent,
 			"on-accent": ensureContrast(role("onPrimary"), accent),
-			card: role("surfaceContainer"),
-			"card-high": role("surfaceContainerHigh"),
+			card: elevated("surfaceContainer", 4),
+			"card-high": elevated("surfaceContainerHigh", 7),
 			tonal,
 			"on-tonal": ensureContrast(role("onPrimaryContainer"), tonal),
 			"outline-v": role("outlineVariant"),
@@ -600,7 +615,6 @@ async function themePage(url, env) {
     width: min(400px, calc(100vw - 32px)); margin: 24px;
     padding: 40px 32px 32px; text-align: center;
     background: var(--card); border-radius: 28px;
-    border: 1px solid var(--outline-v);
     box-shadow: 0 30px 70px rgba(0, 0, 0, .45);
     animation: rise .5s cubic-bezier(.2,.7,.2,1) backwards;
   }
