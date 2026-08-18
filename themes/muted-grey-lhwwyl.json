@@ -1,0 +1,17 @@
+{
+  "id": "muted-grey-lhwwyl",
+  "schemaVersion": 1,
+  "name": "muted grey",
+  "description": "white on black is overrated let's just use the different shades of grey",
+  "author": "",
+  "style": "MONOCHROMATIC",
+  "seedColor": "#211C23",
+  "accentSaturation": 0,
+  "backgroundSaturation": 40,
+  "backgroundLightness": 25,
+  "accurateShades": false,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1787069564
+}
