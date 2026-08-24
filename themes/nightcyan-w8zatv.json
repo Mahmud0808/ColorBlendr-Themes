@@ -1,0 +1,19 @@
+{
+  "id": "nightcyan-w8zatv",
+  "schemaVersion": 1,
+  "name": "Nightcyan",
+  "description": "Full black color and cyan (only amoled devices)",
+  "author": "AlexM25",
+  "style": "FIDELITY",
+  "seedColor": "#00FFFF",
+  "secondaryColor": "#00FFFF",
+  "tertiaryColor": "#00FFFF",
+  "accentSaturation": 200,
+  "backgroundSaturation": 200,
+  "backgroundLightness": 0,
+  "accurateShades": false,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "createdAt": 1787574180
+}
