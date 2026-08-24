@@ -1,0 +1,27 @@
+{
+  "id": "blue-gold-ssww0h",
+  "schemaVersion": 1,
+  "name": "Blue & Gold",
+  "description": "Like a lapis lazuli, or a  night sky✨",
+  "author": "",
+  "style": "FIDELITY",
+  "seedColor": "#202B73",
+  "secondaryColor": "#C19556",
+  "accentSaturation": 115,
+  "backgroundSaturation": 149,
+  "backgroundLightness": 62,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_10": "#FFF7EF",
+    "system_accent1_50": "#FFEFDD",
+    "system_accent1_100": "#FFDDB5",
+    "system_accent1_200": "#EEBE81",
+    "system_accent2_800": "#1D2871",
+    "system_accent2_900": "#020F5C",
+    "system_neutral2_10": "#FEFDFA"
+  },
+  "createdAt": 1787574123
+}
