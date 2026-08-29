@@ -1,0 +1,27 @@
+{
+  "id": "gtaiv-lq8fas",
+  "schemaVersion": 1,
+  "name": "GTAIV",
+  "description": "Real Pink",
+  "author": "",
+  "style": "SPRITZ",
+  "seedColor": "#59B4BC",
+  "secondaryColor": "#C9A6F4",
+  "accentSaturation": 200,
+  "backgroundSaturation": 150,
+  "backgroundLightness": 61,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 115,
+  "backgroundSaturationLight": 115,
+  "backgroundLightnessLight": 100,
+  "accurateShades": false,
+  "colorSpecVersion": 1,
+  "pitchBlack": false,
+  "tintText": false,
+  "colorOverrides": {
+    "system_accent1_200": "#B8B7E2",
+    "system_accent2_100": "#EFD7FF",
+    "system_accent2_700": "#9B73CF"
+  },
+  "createdAt": 1787990026
+}
