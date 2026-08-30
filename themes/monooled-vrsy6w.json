@@ -1,0 +1,32 @@
+{
+  "id": "monooled-vrsy6w",
+  "schemaVersion": 1,
+  "name": "MonoOLED",
+  "description": "optimized for LineageOS",
+  "author": "",
+  "style": "MONOCHROMATIC",
+  "seedColor": "#444444",
+  "secondaryColor": "#000000",
+  "tertiaryColor": "#000000",
+  "accentSaturation": 0,
+  "backgroundSaturation": 0,
+  "backgroundLightness": 0,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_800": "#000000",
+    "system_accent2_500": "#464747",
+    "system_accent2_600": "#303030",
+    "system_accent2_700": "#303030",
+    "system_accent2_800": "#000000",
+    "system_accent3_800": "#000000",
+    "system_neutral1_500": "#464747",
+    "system_neutral1_600": "#303030",
+    "system_neutral1_700": "#303030",
+    "system_neutral1_800": "#000000",
+    "system_neutral2_800": "#000000"
+  },
+  "createdAt": 1788076645
+}
