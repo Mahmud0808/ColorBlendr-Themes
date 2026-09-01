@@ -1,0 +1,19 @@
+{
+  "id": "primary-dull-y8kqpi",
+  "schemaVersion": 1,
+  "name": "Primary Dull",
+  "description": "Primary colors lightly desaturated",
+  "author": "Alessi_io",
+  "style": "FIDELITY",
+  "seedColor": "#22719D",
+  "secondaryColor": "#DEC168",
+  "tertiaryColor": "#F64D14",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "createdAt": 1788242188
+}
