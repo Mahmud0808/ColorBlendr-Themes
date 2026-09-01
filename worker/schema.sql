@@ -35,6 +35,14 @@ CREATE TABLE IF NOT EXISTS applies (
 
 CREATE INDEX IF NOT EXISTS idx_applies_ip ON applies (theme_id, ip);
 
+-- Per-theme totals kept in step with votes/applies on every write, so
+-- /counts reads one row per theme instead of scanning both tables.
+CREATE TABLE IF NOT EXISTS theme_counts (
+    theme_id TEXT PRIMARY KEY,
+    votes INTEGER NOT NULL DEFAULT 0,
+    applies INTEGER NOT NULL DEFAULT 0
+);
+
 -- One report per device/ip per theme; first report opens a GitHub issue.
 CREATE TABLE IF NOT EXISTS reports (
     theme_id TEXT NOT NULL,

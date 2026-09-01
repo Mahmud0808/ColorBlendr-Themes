@@ -86,6 +86,9 @@ const SHADE_STEPS = [
 const VALID_SHADES = new Set(
 	SHADE_ROWS.flatMap((row) => SHADE_STEPS.map((step) => `${row}_${step}`)),
 );
+// /counts is served from the colo cache for this long; writes purge it in
+// the colo that handled them, so only other users see a stale total.
+const COUNTS_CACHE_SECONDS = 600;
 const MAX_UPLOADS_PER_DAY = 3;
 const MAX_REPORTS_PER_DAY = 3;
 
@@ -296,16 +299,16 @@ export default {
 		const url = new URL(request.url);
 		try {
 			if (request.method === "POST" && url.pathname === "/vote") {
-				return await vote(request, env);
+				return await vote(request, env, ctx);
 			}
 			if (request.method === "GET" && url.pathname === "/votes") {
 				return await votesForDevice(url, env);
 			}
 			if (request.method === "POST" && url.pathname === "/download") {
-				return await download(request, env);
+				return await download(request, env, ctx);
 			}
 			if (request.method === "GET" && url.pathname === "/counts") {
-				return await counts(env);
+				return await counts(request, env, ctx);
 			}
 			if (request.method === "POST" && url.pathname === "/upload") {
 				return await upload(request, env);
@@ -362,12 +365,9 @@ async function report(request, env) {
 	}
 
 	// Same identity (device OR ip) reports a theme at most once.
-	const existing = await env.DB.prepare(
-		"SELECT 1 FROM reports WHERE theme_id = ? AND (device = ? OR ip = ?)",
-	)
-		.bind(themeId, device, ip)
-		.first();
-	if (existing) return json({ reported: true });
+	if (await identityExists("reports", themeId, device, ip, env)) {
+		return json({ reported: true });
+	}
 
 	await env.DB.prepare(
 		"INSERT INTO reports (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
@@ -726,7 +726,7 @@ function json(obj, status = 200) {
 	});
 }
 
-async function vote(request, env) {
+async function vote(request, env, ctx) {
 	const body = await request.json().catch(() => null);
 	const themeId = body?.themeId;
 	const device = body?.device;
@@ -745,28 +745,41 @@ async function vote(request, env) {
 
 	// Identity = device OR ip, so a VPN (new ip, same device) and device
 	// rotation (same ip, new device) both resolve to the existing vote.
-	const existing = await env.DB.prepare(
-		"SELECT 1 FROM votes WHERE theme_id = ? AND (device = ? OR ip = ?)",
-	)
-		.bind(themeId, device, ip)
-		.first();
+	const existing = await identityExists("votes", themeId, device, ip, env);
 
 	if (existing) {
-		await env.DB.prepare(
+		// Can clear two rows (device match + ip match), so the counter moves
+		// by what the delete actually removed.
+		const deleted = await env.DB.prepare(
 			"DELETE FROM votes WHERE theme_id = ? AND (device = ? OR ip = ?)",
 		)
 			.bind(themeId, device, ip)
 			.run();
+		const removed = deleted.meta?.changes ?? 0;
+		if (removed > 0) {
+			await env.DB.prepare(
+				"UPDATE theme_counts SET votes = MAX(votes - ?, 0) WHERE theme_id = ?",
+			)
+				.bind(removed, themeId)
+				.run();
+		}
 	} else {
-		await env.DB.prepare(
-			"INSERT INTO votes (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
-		)
-			.bind(themeId, device, ip, Date.now())
-			.run();
+		// Batch = one transaction, so row and counter cannot drift apart.
+		await env.DB.batch([
+			env.DB.prepare(
+				"INSERT INTO votes (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
+			).bind(themeId, device, ip, Date.now()),
+			env.DB.prepare(
+				"INSERT INTO theme_counts (theme_id, votes, applies) VALUES (?, 1, 0) " +
+					"ON CONFLICT(theme_id) DO UPDATE SET votes = votes + 1",
+			).bind(themeId),
+		]);
 	}
 
+	purgeCounts(request, ctx);
+
 	const count = await env.DB.prepare(
-		"SELECT COUNT(*) AS c FROM votes WHERE theme_id = ?",
+		"SELECT votes AS c FROM theme_counts WHERE theme_id = ?",
 	)
 		.bind(themeId)
 		.first();
@@ -788,7 +801,7 @@ async function votesForDevice(url, env) {
 }
 
 // One download per device per theme; re-applying the same theme is free.
-async function download(request, env) {
+async function download(request, env, ctx) {
 	const body = await request.json().catch(() => null);
 	const themeId = body?.themeId;
 	const device = body?.device;
@@ -806,21 +819,23 @@ async function download(request, env) {
 	);
 
 	// One download per identity (device OR ip) per theme.
-	const existing = await env.DB.prepare(
-		"SELECT 1 FROM applies WHERE theme_id = ? AND (device = ? OR ip = ?)",
-	)
-		.bind(themeId, device, ip)
-		.first();
+	const existing = await identityExists("applies", themeId, device, ip, env);
 	if (!existing) {
-		await env.DB.prepare(
-			"INSERT INTO applies (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
-		)
-			.bind(themeId, device, ip, Date.now())
-			.run();
+		// Batch = one transaction, so row and counter cannot drift apart.
+		await env.DB.batch([
+			env.DB.prepare(
+				"INSERT INTO applies (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
+			).bind(themeId, device, ip, Date.now()),
+			env.DB.prepare(
+				"INSERT INTO theme_counts (theme_id, votes, applies) VALUES (?, 0, 1) " +
+					"ON CONFLICT(theme_id) DO UPDATE SET applies = applies + 1",
+			).bind(themeId),
+		]);
+		purgeCounts(request, ctx);
 	}
 
 	const count = await env.DB.prepare(
-		"SELECT COUNT(*) AS c FROM applies WHERE theme_id = ?",
+		"SELECT applies AS c FROM theme_counts WHERE theme_id = ?",
 	)
 		.bind(themeId)
 		.first();
@@ -828,19 +843,65 @@ async function download(request, env) {
 	return json({ downloads: count?.c ?? 0 });
 }
 
-async function counts(env) {
-	const votes = await env.DB.prepare(
-		"SELECT theme_id, COUNT(*) AS c FROM votes GROUP BY theme_id",
-	).all();
-	const downloads = await env.DB.prepare(
-		"SELECT theme_id, COUNT(*) AS c FROM applies GROUP BY theme_id",
+// Hottest endpoint by a wide margin: every client that refreshes its index
+// calls it. Served from the colo cache (one D1 read per TTL per colo) and
+// backed by theme_counts, so the read is one row per theme instead of a
+// scan of votes + applies.
+async function counts(request, env, ctx) {
+	const cache = caches.default;
+	const key = countsCacheKey(request);
+	const hit = await cache.match(key);
+	if (hit) return hit;
+
+	const rows = await env.DB.prepare(
+		"SELECT theme_id, votes, applies FROM theme_counts",
 	).all();
 
 	const out = { upvotes: {}, downloads: {} };
-	for (const row of votes.results ?? []) out.upvotes[row.theme_id] = row.c;
-	for (const row of downloads.results ?? [])
-		out.downloads[row.theme_id] = row.c;
-	return json(out);
+	for (const row of rows.results ?? []) {
+		if (row.votes > 0) out.upvotes[row.theme_id] = row.votes;
+		if (row.applies > 0) out.downloads[row.theme_id] = row.applies;
+	}
+
+	const response = json(out);
+	response.headers.set(
+		"cache-control",
+		`public, s-maxage=${COUNTS_CACHE_SECONDS}`,
+	);
+	ctx.waitUntil(cache.put(key, response.clone()));
+	return response;
+}
+
+function countsCacheKey(request) {
+	const url = new URL(request.url);
+	url.pathname = "/counts";
+	url.search = "";
+	return new Request(url.toString(), { method: "GET" });
+}
+
+// Drop the cached counts in this colo after a write, so a voter sees their
+// own vote instead of waiting out the TTL.
+function purgeCounts(request, ctx) {
+	ctx?.waitUntil(caches.default.delete(countsCacheKey(request)));
+}
+
+// Two index seeks instead of `device = ? OR ip = ?`, which defeats both
+// indexes and reads every row of the theme. Table name is a literal from
+// the call sites, never user input.
+async function identityExists(table, themeId, device, ip, env) {
+	const byDevice = await env.DB.prepare(
+		`SELECT 1 FROM ${table} WHERE theme_id = ? AND device = ?`,
+	)
+		.bind(themeId, device)
+		.first();
+	if (byDevice) return true;
+
+	const byIp = await env.DB.prepare(
+		`SELECT 1 FROM ${table} WHERE theme_id = ? AND ip = ?`,
+	)
+		.bind(themeId, ip)
+		.first();
+	return Boolean(byIp);
 }
 
 // Strict server-side schema validation; mirrors the app's codec.
