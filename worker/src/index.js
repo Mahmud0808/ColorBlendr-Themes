@@ -252,8 +252,10 @@ function buildRows(seedHex, style, spec, dark, sliders, theme) {
 	}
 
 	if (pitch) {
-		rows[3][11] = "#000000";
-		rows[4][11] = "#000000";
+		for (const row of [3, 4]) {
+			rows[row][11] = "#000000";
+			rows[row][10] = atTone(rows[row][10], 8);
+		}
 	}
 
 	return rows;
