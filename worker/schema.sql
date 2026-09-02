@@ -43,6 +43,25 @@ CREATE TABLE IF NOT EXISTS theme_counts (
     applies INTEGER NOT NULL DEFAULT 0
 );
 
+-- Recompute both counters from the source tables. Idempotent and additive:
+-- it only ever overwrites the two derived columns, so running this file
+-- again repairs any drift (and seeds the counters on an existing database).
+-- The union covers themes that exist in theme_counts alone, so a counter
+-- left over after its rows are gone falls back to 0.
+INSERT INTO theme_counts (theme_id, votes, applies)
+SELECT
+    t.theme_id,
+    (SELECT COUNT(*) FROM votes v WHERE v.theme_id = t.theme_id),
+    (SELECT COUNT(*) FROM applies a WHERE a.theme_id = t.theme_id)
+FROM (
+    SELECT theme_id FROM votes
+    UNION SELECT theme_id FROM applies
+    UNION SELECT theme_id FROM theme_counts
+) t
+WHERE true
+ON CONFLICT(theme_id) DO UPDATE
+    SET votes = excluded.votes, applies = excluded.applies;
+
 -- One report per device/ip per theme; first report opens a GitHub issue.
 CREATE TABLE IF NOT EXISTS reports (
     theme_id TEXT NOT NULL,
