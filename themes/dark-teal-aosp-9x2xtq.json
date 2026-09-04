@@ -1,0 +1,29 @@
+{
+  "id": "dark-teal-aosp-9x2xtq",
+  "schemaVersion": 1,
+  "name": "Dark Teal AOSP",
+  "description": "Dark Teal theme inspired by old AOSP colors",
+  "author": "",
+  "style": "FIDELITY",
+  "seedColor": "#80CEC4",
+  "accentSaturation": 85,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_100": "#79B7AE",
+    "system_accent1_200": "#94D2C9",
+    "system_accent1_800": "#0C2623",
+    "system_accent2_100": "#0C2724",
+    "system_accent2_700": "#6C9891",
+    "system_accent2_800": "#141918",
+    "system_neutral1_800": "#111919",
+    "system_neutral1_900": "#080C0C",
+    "system_neutral2_800": "#191919",
+    "system_neutral2_900": "#080C0C"
+  },
+  "createdAt": 1788504764
+}
