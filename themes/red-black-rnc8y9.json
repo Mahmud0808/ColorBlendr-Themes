@@ -1,0 +1,33 @@
+{
+  "id": "red-black-rnc8y9",
+  "schemaVersion": 1,
+  "name": "Red&Black",
+  "description": "Very dark theme /w peach red accents",
+  "author": "shpegun",
+  "style": "FIDELITY",
+  "seedColor": "#FA5F49",
+  "tertiaryColor": "#FF897E",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": true,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_10": "#F4F7FF",
+    "system_accent1_800": "#0C0606",
+    "system_accent2_10": "#F4F7FF",
+    "system_accent2_100": "#001225",
+    "system_accent2_700": "#FFB4A7",
+    "system_accent2_800": "#121212",
+    "system_accent3_10": "#F4F7FF",
+    "system_neutral1_10": "#F4F7FF",
+    "system_neutral1_800": "#131313",
+    "system_neutral1_900": "#0C0000",
+    "system_neutral2_10": "#F4F7FF",
+    "system_neutral2_800": "#1C1717",
+    "system_neutral2_900": "#0C0000"
+  },
+  "createdAt": 1788504831
+}
