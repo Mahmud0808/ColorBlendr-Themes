@@ -1,0 +1,23 @@
+{
+  "id": "green-and-pink-are-banned-ujydo7",
+  "schemaVersion": 1,
+  "name": "No green and pink",
+  "description": "A theme for oled screens that avoids pinkish and greenish colours.",
+  "author": "",
+  "style": "TONAL_SPOT",
+  "seedColor": "#FF9800",
+  "secondaryColor": "#C63800",
+  "tertiaryColor": "#002535",
+  "accentSaturation": 200,
+  "backgroundSaturation": 200,
+  "backgroundLightness": 0,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 100,
+  "backgroundSaturationLight": 100,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1788591823
+}
