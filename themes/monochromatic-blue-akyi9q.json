@@ -1,0 +1,33 @@
+{
+  "id": "monochromatic-blue-akyi9q",
+  "schemaVersion": 1,
+  "name": "monochromatic blue",
+  "description": "a lightish blue color palette",
+  "author": "",
+  "style": "CMF",
+  "seedColor": "#326D8E",
+  "accentSaturation": 200,
+  "backgroundSaturation": 200,
+  "backgroundLightness": 200,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_10": "#E4F3FC",
+    "system_accent1_700": "#5FBCFF",
+    "system_accent1_800": "#008FFF",
+    "system_accent1_900": "#12C1FF",
+    "system_accent2_10": "#E4F3FC",
+    "system_accent2_700": "#25A6FF",
+    "system_accent2_800": "#1A85FF",
+    "system_accent2_900": "#00A8FF",
+    "system_accent3_10": "#E4F3FC",
+    "system_accent3_700": "#9FBEE5",
+    "system_neutral1_10": "#E4F3FC",
+    "system_neutral1_800": "#5B9FFF",
+    "system_neutral1_900": "#84B1FF",
+    "system_neutral2_10": "#E4F3FC"
+  },
+  "createdAt": 1788965009
+}
