@@ -1,0 +1,17 @@
+{
+  "id": "honeymoon-ldr-ttvsnc",
+  "schemaVersion": 1,
+  "name": "Honeymoon ldr",
+  "description": "album color palette",
+  "author": "honey 🦭",
+  "style": "FIDELITY",
+  "seedColor": "#AF808A",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1789043413
+}
