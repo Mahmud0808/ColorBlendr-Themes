@@ -1,0 +1,19 @@
+{
+  "id": "grapered-wpo2nv",
+  "schemaVersion": 1,
+  "name": "grapered",
+  "description": "A beautiful grape color blended with the intense sweetness of red, with pastel pink details.",
+  "author": "Dann11.Art",
+  "style": "TONAL_SPOT",
+  "seedColor": "#311452",
+  "secondaryColor": "#FF007F",
+  "tertiaryColor": "#00F0FF",
+  "accentSaturation": 180,
+  "backgroundSaturation": 180,
+  "backgroundLightness": 75,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1789400286
+}
