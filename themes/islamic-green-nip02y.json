@@ -1,0 +1,17 @@
+{
+  "id": "islamic-green-nip02y",
+  "schemaVersion": 1,
+  "name": "Islamic Green",
+  "description": "Simple palette based on #009000 shade",
+  "author": "",
+  "style": "VIBRANT",
+  "seedColor": "#009000",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "createdAt": 1789487636
+}
