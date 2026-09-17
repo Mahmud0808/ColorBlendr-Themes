@@ -1,0 +1,17 @@
+{
+  "id": "shroom-and-gloom-zdu0ox",
+  "schemaVersion": 1,
+  "name": "Shroom and Gloom",
+  "description": "Purple, green, and black",
+  "author": "",
+  "style": "EXPRESSIVE",
+  "seedColor": "#B186F1",
+  "accentSaturation": 200,
+  "backgroundSaturation": 200,
+  "backgroundLightness": 5,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1789661273
+}
