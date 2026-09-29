@@ -54,8 +54,6 @@
 		/>
 		<script>
 			document.documentElement.classList.add("js");
-			// Restore the session palette before first paint so page
-			// switches keep color.
 			try {
 				const t = JSON.parse(sessionStorage.getItem("siteTheme"));
 				if (
@@ -77,12 +75,21 @@
 				}
 			} catch {}
 		</script>
-		<link rel="stylesheet" href="assets/site.css?v=5" />
+		<link
+			rel="preload"
+			href="assets/fonts/google-sans-flex.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin
+		/>
+		<link rel="stylesheet" href="assets/site.css?v=6" />
 	</head>
 	<body>
-		<div class="wrap">
-			<header class="hero split">
-				<div class="hero-copy">
+		<a class="skiplink" href="#trending">Skip to trending themes</a>
+
+		<header class="topbar">
+			<div class="wrap topbar-in">
+				<a class="brand" href="index.html" aria-label="ColorBlendr Community home">
 					<svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
 						<defs>
 							<linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
@@ -106,25 +113,71 @@
 							/>
 						</g>
 					</svg>
-					<h1 class="title">ColorBlendr Community</h1>
-					<p class="tagline">
-						Material You themes made and shared by the community.
-						Browse, vote, and apply them straight from the
-						ColorBlendr app.
-					</p>
-					<div class="cta">
-						<a
-							class="btn primary"
-							href="https://github.com/Mahmud0808/ColorBlendr"
-							>Get ColorBlendr</a
-						>
-						<a class="btn tonalbtn" href="themes.html"
-							>Browse all themes</a
-						>
-					</div>
+					<span>ColorBlendr</span>
+					<small>community</small>
+				</a>
+				<nav class="toplinks" aria-label="Sections">
+					<a href="#trending">Trending</a>
+					<a href="#how">How it works</a>
+					<a href="#engine">Engine</a>
+					<a href="#compare">Compare</a>
+					<a href="#faq">FAQ</a>
+				</nav>
+				<div class="topactions">
+					<a
+						class="toplink-gh"
+						href="https://github.com/Mahmud0808/ColorBlendr-Themes"
+						aria-label="Community themes repository on GitHub"
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path
+								d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.09.66-.22.66-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.03A9.5 9.5 0 0 1 12 6.8c.85 0 1.71.11 2.51.34 1.91-1.3 2.75-1.03 2.75-1.03.55 1.38.2 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.85-2.34 4.7-4.57 4.95.36.31.68.92.68 1.85v2.75c0 .27.16.58.67.48A10 10 0 0 0 22 12c0-5.52-4.48-10-10-10z"
+							/>
+						</svg>
+						<span>GitHub</span>
+					</a>
+					<a class="navbtn" href="themes.html">All themes</a>
 				</div>
-				<div class="hero-phone" aria-hidden="true">
-					<div class="phone">
+			</div>
+		</header>
+
+		<main id="top">
+			<section class="hero">
+				<div class="wrap hero-grid">
+					<div class="hero-copy">
+						<h1>
+							Palettes shared by
+							<span class="hl">the people who made them.</span>
+						</h1>
+						<p class="hero-lead">
+							Every theme here was built in ColorBlendr and reviewed by a
+							person before it went live. Browse them, vote, and apply one
+							to your whole device from the app.
+						</p>
+						<div class="cta">
+							<a class="btn primary" href="themes.html">
+								<svg viewBox="0 0 24 24" aria-hidden="true">
+									<path
+										d="M4 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Zm10 0a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2V5ZM4 17a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2Zm8-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4Z"
+									/>
+								</svg>
+								Browse all themes
+							</a>
+							<a
+								class="textlink"
+								href="https://mahmud0808.github.io/ColorBlendr/"
+								>Get ColorBlendr<svg viewBox="0 0 24 24" aria-hidden="true">
+									<path
+										d="M13.3 5.3a1 1 0 0 1 1.4 0l6 6a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.4-1.4l4.3-4.3H4a1 1 0 1 1 0-2h13.6l-4.3-4.3a1 1 0 0 1 0-1.4Z"
+									/></svg
+							></a>
+						</div>
+					</div>
+					<div class="hero-phone" aria-hidden="true">
+						<span class="shape cookie blob-a"></span>
+						<span class="shape flower blob-b"></span>
+						<span class="shape clover blob-c"></span>
+						<div class="phone">
 						<div class="p-screen">
 							<div class="p-clockrow">
 								<div class="p-clock">12:30</div>
@@ -228,579 +281,504 @@
 							<div class="p-pill"></div>
 						</div>
 					</div>
+					</div>
 				</div>
-			</header>
-		</div>
 
-		<h2 class="section-title">Trending creations</h2>
-		<div id="rail" class="marquee">
-			<div class="sk-row">
-				<div class="sk-card">
-					<div class="sk-swatch"></div>
-					<div class="sk-lines">
-						<div class="sk-line w75"></div>
-						<div class="sk-line w45"></div>
-						<div class="sk-line w60"></div>
-					</div>
+				<div class="wrap ramp-cap" aria-hidden="true">
+					<span>system_accent1, from the seed the page is wearing</span>
+					<span>0 &rarr; 1000</span>
 				</div>
-				<div class="sk-card">
-					<div class="sk-swatch"></div>
-					<div class="sk-lines">
-						<div class="sk-line w75"></div>
-						<div class="sk-line w45"></div>
-						<div class="sk-line w60"></div>
-					</div>
-				</div>
-				<div class="sk-card">
-					<div class="sk-swatch"></div>
-					<div class="sk-lines">
-						<div class="sk-line w75"></div>
-						<div class="sk-line w45"></div>
-						<div class="sk-line w60"></div>
-					</div>
-				</div>
-				<div class="sk-card">
-					<div class="sk-swatch"></div>
-					<div class="sk-lines">
-						<div class="sk-line w75"></div>
-						<div class="sk-line w45"></div>
-						<div class="sk-line w60"></div>
-					</div>
-				</div>
-				<div class="sk-card">
-					<div class="sk-swatch"></div>
-					<div class="sk-lines">
-						<div class="sk-line w75"></div>
-						<div class="sk-line w45"></div>
-						<div class="sk-line w60"></div>
-					</div>
-				</div>
-				<div class="sk-card">
-					<div class="sk-swatch"></div>
-					<div class="sk-lines">
-						<div class="sk-line w75"></div>
-						<div class="sk-line w45"></div>
-						<div class="sk-line w60"></div>
-					</div>
-				</div>
-				<div class="sk-card">
-					<div class="sk-swatch"></div>
-					<div class="sk-lines">
-						<div class="sk-line w75"></div>
-						<div class="sk-line w45"></div>
-						<div class="sk-line w60"></div>
-					</div>
-				</div>
-				<div class="sk-card">
-					<div class="sk-swatch"></div>
-					<div class="sk-lines">
-						<div class="sk-line w75"></div>
-						<div class="sk-line w45"></div>
-						<div class="sk-line w60"></div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div class="wrap">
-			<div class="stats" id="stats" hidden>
-				<div class="stat">
-					<span class="statnum" data-count="0">0</span
-					><span class="statlabel">Community themes</span>
-				</div>
-				<div class="stat">
-					<span class="statnum" data-count="0">0</span
-					><span class="statlabel">Votes cast</span>
-				</div>
-				<div class="stat">
-					<span class="statnum" data-count="0">0</span
-					><span class="statlabel">Times applied</span>
-				</div>
-			</div>
-
-			<div class="centerlink">
-				<a class="btn tonalbtn" href="themes.html"
-					>See every creation</a
-				>
-			</div>
-
-			<h2 class="section-title">How it works</h2>
-			<div class="grid">
-				<div class="info">
-					<h3>Create</h3>
-					<p>
-						Build your palette in ColorBlendr: seed colors, Monet
-						styles, saturation, per-shade overrides.
-					</p>
-				</div>
-				<div class="info">
-					<h3>Share</h3>
-					<p>
-						Submit anonymously from the app. Every creation is
-						human-reviewed before it goes live.
-					</p>
-				</div>
-				<div class="info">
-					<h3>Apply</h3>
-					<p>
-						One tap in the app themes your whole device with any
-						community creation.
-					</p>
-				</div>
-			</div>
-
-			<h2 class="section-title">Under the hood</h2>
-			<div class="lead">
-				<p>
-					Android 12 introduced Monet: the system derives a tonal
-					palette from your wallpaper and locks you out of the rest.
-					ColorBlendr works at the layer underneath. It builds its
-					palettes on-device (six tonal rows, thirteen shades each)
-					and injects them at runtime through the
-					<code>FabricatedOverlay</code> API or the system's theme
-					customization settings. No APK overlays are compiled. No
-					system partition is touched. Removing a theme is the same
-					operation as applying one.
-				</p>
-				<p>
-					Every change previews live inside the app before anything
-					reaches the system. A staged preferences layer holds your
-					edits in memory; commit applies the overlay, discard drops
-					it. The engine re-applies your configuration on boot,
-					wallpaper change, and dark-mode switches through
-					event-driven broadcast receivers. Nothing polls.
-				</p>
-			</div>
-			<div class="grid">
-				<div class="info">
-					<svg
-						class="mode-icon"
-						viewBox="0 0 24 24"
-						fill="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"
-						/>
-					</svg>
-					<h3>Root</h3>
-					<p>
-						The full engine. Fabricated overlays register directly
-						with the system's overlay service, so palette changes
-						land instantly, without reboot.
-					</p>
-					<ul class="caps">
-						<li>One-tap apply with live preview</li>
-						<li>Per-shade overriding across 55 palette slots</li>
-						<li>Saturation and lightness sliders, 0–200%</li>
-						<li>Per-app theming for apps that ignore Monet</li>
-						<li>Community themes applied in one tap</li>
-					</ul>
-				</div>
-				<div class="info">
-					<svg
-						class="mode-icon"
-						viewBox="0 0 24 24"
-						fill="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8h16v10zm-2-1h-6v-2h6v2zM7.5 17l-1.41-1.41L8.67 13l-2.59-2.59L7.5 9l4 4-4 4z"
-						/>
-					</svg>
-					<h3>Shizuku</h3>
-					<p>
-						No root required. ColorBlendr runs a helper process at
-						shell privilege through Shizuku and writes the system's
-						theme customization settings directly.
-					</p>
-					<ul class="caps">
-						<li>Rootless system-wide palette control</li>
-						<li>Any seed color and Monet style</li>
-						<li>Survives reboots; settings persist</li>
-						<li>Setup once per boot via the Shizuku app</li>
-					</ul>
-				</div>
-				<div class="info">
-					<svg
-						class="mode-icon"
-						viewBox="0 0 24 24"
-						fill="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							d="M12 21l3.5-4.67c-.98-.73-2.19-1.16-3.5-1.16s-2.52.43-3.5 1.16L12 21zm0-18C7.31 3 3.07 4.9 0 7.97l2.12 2.12C4.66 7.55 8.15 6 12 6s7.34 1.55 9.88 4.09L24 7.97C20.93 4.9 16.69 3 12 3zm0 6c-2.9 0-5.53 1.17-7.44 3.06l2.12 2.12C8.06 12.79 9.94 12 12 12s3.94.79 5.32 2.18l2.12-2.12C17.53 10.17 14.9 9 12 9z"
-						/>
-					</svg>
-					<h3>Wireless ADB</h3>
-					<p>
-						The same shell-privilege path, negotiated on-device over
-						the ADB TLS protocol. Pair once with your own device; no
-						computer involved afterward.
-					</p>
-					<ul class="caps">
-						<li>Fully on-device rootless theming</li>
-						<li>Identical capabilities to Shizuku mode</li>
-						<li>Works where Shizuku isn't installed</li>
-						<li>Requires Wi-Fi and developer options</li>
-					</ul>
-				</div>
-			</div>
-
-			<h2 class="section-title">How it compares</h2>
-			<div class="tablewrap">
-				<table class="compare">
-					<caption class="sr-only">
-						How ColorBlendr compares with stock Android theming, OEM
-						theming, and legacy Substratum.
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">Capability</th>
-							<th scope="col">ColorBlendr</th>
-							<th scope="col">Stock Android 12+</th>
-							<th scope="col">OEM Theming</th>
-							<th scope="col">Substratum (legacy)</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<th scope="row">Apply speed</th>
-							<td data-m="ColorBlendr">Instant, runtime</td>
-							<td data-m="Stock Android 12+">
-								Wallpaper change + regeneration
-							</td>
-							<td data-m="OEM Theming">Instant, preset-bound</td>
-							<td data-m="Substratum (legacy)">
-								Reboot or SystemUI restart
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">Works without root</th>
-							<td data-m="ColorBlendr">
-								Yes, via Shizuku or Wireless ADB
-							</td>
-							<td data-m="Stock Android 12+">Yes</td>
-							<td data-m="OEM Theming">Yes</td>
-							<td data-m="Substratum (legacy)">
-								Mostly no<sup>1</sup>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">Custom seed color</th>
-							<td data-m="ColorBlendr">Any color, any source</td>
-							<td data-m="Stock Android 12+">
-								Wallpaper-derived only
-							</td>
-							<td data-m="OEM Theming">Preset packs</td>
-							<td data-m="Substratum (legacy)">
-								Per-overlay, precompiled
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">Per-shade manual overriding</th>
-							<td data-m="ColorBlendr">
-								Yes, 5 rows &times; 11 editable tones<sup
-									>2</sup
-								>
-							</td>
-							<td data-m="Stock Android 12+">No</td>
-							<td data-m="OEM Theming">No</td>
-							<td data-m="Substratum (legacy)">
-								Only if the overlay author shipped it
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">Saturation / lightness control</th>
-							<td data-m="ColorBlendr">
-								Sliders, 0–200%, per mode<sup>2</sup>
-							</td>
-							<td data-m="Stock Android 12+">No</td>
-							<td data-m="OEM Theming">Limited presets</td>
-							<td data-m="Substratum (legacy)">No</td>
-						</tr>
-						<tr>
-							<th scope="row">Pitch-black AMOLED rendering</th>
-							<td data-m="ColorBlendr">
-								Yes, one switch<sup>2</sup>
-							</td>
-							<td data-m="Stock Android 12+">No</td>
-							<td data-m="OEM Theming">Partial<sup>3</sup></td>
-							<td data-m="Substratum (legacy)">Per-overlay</td>
-						</tr>
-						<tr>
-							<th scope="row">Storage footprint</th>
-							<td data-m="ColorBlendr">
-								None; overlays are fabricated in memory
-							</td>
-							<td data-m="Stock Android 12+">None</td>
-							<td data-m="OEM Theming">None</td>
-							<td data-m="Substratum (legacy)">
-								APK per overlay, accumulates
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">Survives OS updates</th>
-							<td data-m="ColorBlendr">
-								Yes, re-applies from saved config
-							</td>
-							<td data-m="Stock Android 12+">Yes</td>
-							<td data-m="OEM Theming">Yes</td>
-							<td data-m="Substratum (legacy)">
-								Frequently breaks, needs rebuilds
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">Community sharing</th>
-							<td data-m="ColorBlendr">
-								Anonymous, human-reviewed, in-app
-							</td>
-							<td data-m="Stock Android 12+">No</td>
-							<td data-m="OEM Theming">Locked to OEM stores</td>
-							<td data-m="Substratum (legacy)">
-								Third-party packs, unreviewed
-							</td>
-						</tr>
-					</tbody>
-				</table>
-				<div class="footnotes">
-					<p class="footnote">
-						1. Substratum's rootless "Andromeda" mode required a PC
-						tether per boot and died with Android 10.
-					</p>
-					<p class="footnote">
-						2. Root mode only; Shizuku and Wireless ADB modes cover
-						seed color and style selection.
-					</p>
-					<p class="footnote">
-						3. OEM dark modes darken surfaces but rarely reach true
-						#000000 across system UI.
-					</p>
-				</div>
-			</div>
-
-			<h2 class="section-title">Power-user FAQ</h2>
-			<div class="faq">
-				<details>
-					<summary>
-						How does ColorBlendr modify system colors without
-						permanent root modification?<svg
-							class="chevd"
-							viewBox="0 0 24 24"
-							width="20"
-							height="20"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path
-								d="M8.12 9.29 12 13.17l3.88-3.88c.39-.39 1.02-.39 1.41 0 .39.39.39 1.02 0 1.41l-4.59 4.59c-.39.39-1.02.39-1.41 0L6.7 10.7c-.39-.39-.39-1.02 0-1.41.39-.38 1.03-.39 1.42 0Z"
-							/>
-						</svg>
-					</summary>
-					<div class="answer">
-						<p>
-							Through <code>FabricatedOverlay</code> — an Android
-							12+ API that registers resource overlays with the
-							OverlayManagerService at runtime. Nothing is written
-							to <code>/system</code> or <code>/vendor</code>, no
-							APK is installed, and no partition is remounted.
-							Unregistering the overlay restores stock behavior in
-							the same second.
-						</p>
-						<p>
-							In Shizuku and Wireless ADB modes, ColorBlendr
-							instead writes the documented
-							<code>theme_customization_overlay_packages</code>
-							secure setting — the same mechanism the stock
-							wallpaper picker uses, with more of its fields
-							filled in.
-						</p>
-					</div>
-				</details>
-				<details>
-					<summary>
-						Why don't Samsung OneUI system apps change color?<svg
-							class="chevd"
-							viewBox="0 0 24 24"
-							width="20"
-							height="20"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path
-								d="M8.12 9.29 12 13.17l3.88-3.88c.39-.39 1.02-.39 1.41 0 .39.39.39 1.02 0 1.41l-4.59 4.59c-.39.39-1.02.39-1.41 0L6.7 10.7c-.39-.39-.39-1.02 0-1.41.39-.38 1.03-.39 1.42 0Z"
-							/>
-						</svg>
-					</summary>
-					<div class="answer">
-						<p>
-							OneUI's system apps read from Samsung's own palette
-							pipeline, not Monet. ColorBlendr replaces the Monet
-							palette, so every app that honors Material You
-							(Google apps, most modern third-party apps) follows
-							it. Samsung's own UI ignores Monet by design, and no
-							overlay-based tool can change that without modifying
-							Samsung's framework itself.
-						</p>
-					</div>
-				</details>
-				<details>
-					<summary>
-						Do the background service and live previews drain
-						battery?<svg
-							class="chevd"
-							viewBox="0 0 24 24"
-							width="20"
-							height="20"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path
-								d="M8.12 9.29 12 13.17l3.88-3.88c.39-.39 1.02-.39 1.41 0 .39.39.39 1.02 0 1.41l-4.59 4.59c-.39.39-1.02.39-1.41 0L6.7 10.7c-.39-.39-.39-1.02 0-1.41.39-.38 1.03-.39 1.42 0Z"
-							/>
-						</svg>
-					</summary>
-					<div class="answer">
-						<p>
-							The service exists to keep broadcast receivers
-							alive; it reacts to wallpaper changes, boot, and
-							dark-mode switches. There is no polling. Between
-							events it is idle. Scheduling cost only.
-						</p>
-						<p>
-							Live preview never touches the system at all: it
-							loads the candidate palette into the app's own
-							process through <code>ResourcesLoader</code>, so
-							previewing costs the same as rendering any app
-							screen. The palette math (CAM16 color appearance
-							model) runs once per change, in milliseconds, then
-							is cached.
-						</p>
-					</div>
-				</details>
-				<details>
-					<summary>
-						What happens to my overrides after a reboot or ROM
-						update?<svg
-							class="chevd"
-							viewBox="0 0 24 24"
-							width="20"
-							height="20"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path
-								d="M8.12 9.29 12 13.17l3.88-3.88c.39-.39 1.02-.39 1.41 0 .39.39.39 1.02 0 1.41l-4.59 4.59c-.39.39-1.02.39-1.41 0L6.7 10.7c-.39-.39-.39-1.02 0-1.41.39-.38 1.03-.39 1.42 0Z"
-							/>
-						</svg>
-					</summary>
-					<div class="answer">
-						<p>
-							Your configuration is the source of truth, stored in
-							app data — not in the overlay. After boot, once you
-							unlock, a receiver re-registers the overlay from
-							that configuration. ROM updates that clear
-							registered overlays are handled the same way: the
-							next boot re-applies everything.
-						</p>
-						<p>
-							Per-shade overrides, sliders, and saved styles also
-							travel inside backup files you can export and
-							restore.
-						</p>
-					</div>
-				</details>
-				<details>
-					<summary>
-						How does anonymous sharing work without accounts?<svg
-							class="chevd"
-							viewBox="0 0 24 24"
-							width="20"
-							height="20"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path
-								d="M8.12 9.29 12 13.17l3.88-3.88c.39-.39 1.02-.39 1.41 0 .39.39.39 1.02 0 1.41l-4.59 4.59c-.39.39-1.02.39-1.41 0L6.7 10.7c-.39-.39-.39-1.02 0-1.41.39-.38 1.03-.39 1.42 0Z"
-							/>
-						</svg>
-					</summary>
-					<div class="answer">
-						<p>
-							Submitting a theme uploads only the color
-							specification plus the name and description you
-							type. A human reviews it as a public pull request
-							before it appears. Voting needs duplicate
-							protection, so the app sends a one-way SHA-256 hash
-							of the device identifier with an app-specific salt.
-							It cannot be reversed, cannot be correlated across
-							apps, and is stored only to enforce one vote per
-							device.
-						</p>
-						<p>
-							No accounts, no analytics, no advertising
-							identifiers. The entire pipeline is public:
-							repository, review process, serving infrastructure.
-						</p>
-					</div>
-				</details>
-			</div>
-
-			<section class="closer">
-				<h2>Share what you made</h2>
-				<p>
-					Every creation here came out of the app. Build a palette you
-					like, share it from the Community screen, and it shows up
-					once it has been reviewed.
-				</p>
-				<div class="cta">
-					<a class="btn primary" href="themes.html">
-						<svg
-							viewBox="0 0 24 24"
-							width="18"
-							height="18"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path
-								d="M12 3a9 9 0 0 0 0 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"
-							/>
-						</svg>
-						Browse all creations
-					</a>
-					<a
-						class="btn tonalbtn"
-						href="https://github.com/Mahmud0808/ColorBlendr/releases/latest"
-					>
-						<svg
-							viewBox="0 0 24 24"
-							width="18"
-							height="18"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path
-								d="M16.59 9H15V4c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v5H7.41c-.89 0-1.34 1.08-.71 1.71l4.59 4.59c.39.39 1.02.39 1.41 0l4.59-4.59c.63-.63.19-1.71-.7-1.71ZM5 19c0 .55.45 1 1 1h12c.55 0 1-.45 1-1s-.45-1-1-1H6c-.55 0-1 .45-1 1Z"
-							/>
-						</svg>
-						Get ColorBlendr
-					</a>
-				</div>
-				<div class="closer-tags">
-					<span>Open source</span><span>No accounts</span
-					><span>No tracking</span>
+				<div class="ramp" aria-hidden="true">
+					<span style="--c: var(--ramp-0)"><em>0</em></span>
+					<span style="--c: var(--ramp-1)"><em>10</em></span>
+					<span style="--c: var(--ramp-2)"><em>50</em></span>
+					<span style="--c: var(--ramp-3)"><em>100</em></span>
+					<span style="--c: var(--ramp-4)"><em>200</em></span>
+					<span style="--c: var(--ramp-5)"><em>300</em></span>
+					<span style="--c: var(--ramp-6)"><em>400</em></span>
+					<span class="dark" style="--c: var(--ramp-7)"><em>500</em></span>
+					<span class="dark" style="--c: var(--ramp-8)"><em>600</em></span>
+					<span class="dark" style="--c: var(--ramp-9)"><em>700</em></span>
+					<span class="dark" style="--c: var(--ramp-10)"><em>800</em></span>
+					<span class="dark" style="--c: var(--ramp-11)"><em>900</em></span>
+					<span class="dark" style="--c: var(--ramp-12)"><em>1000</em></span>
 				</div>
 			</section>
 
-			<footer>
-				<a href="https://github.com/Mahmud0808/ColorBlendr">GitHub</a
-				><span class="sep"></span
-				><a href="https://t.me/DrDsProjects">Telegram</a>
-			</footer>
-		</div>
+			<section class="sec" id="trending" aria-labelledby="trending-title">
+				<div class="wrap">
+					<header class="sec-head">
+						<h2 id="trending-title">Trending right now.</h2>
+						<p class="sec-lead">
+							Ranked by votes and applies, weighted toward newer themes.
+							<span class="on-hover">Hover a card and the page wears it.</span>
+							<span class="on-touch">Tap a card to open it.</span>
+						</p>
+					</header>
+				</div>
+				<div id="rail" class="marquee">
+					<div class="sk-row">
+						<div class="sk-card"><div class="sk-swatch"></div><div class="sk-lines"><div class="sk-line w75"></div><div class="sk-line w45"></div><div class="sk-line w60"></div></div></div>
+						<div class="sk-card"><div class="sk-swatch"></div><div class="sk-lines"><div class="sk-line w75"></div><div class="sk-line w45"></div><div class="sk-line w60"></div></div></div>
+						<div class="sk-card"><div class="sk-swatch"></div><div class="sk-lines"><div class="sk-line w75"></div><div class="sk-line w45"></div><div class="sk-line w60"></div></div></div>
+						<div class="sk-card"><div class="sk-swatch"></div><div class="sk-lines"><div class="sk-line w75"></div><div class="sk-line w45"></div><div class="sk-line w60"></div></div></div>
+						<div class="sk-card"><div class="sk-swatch"></div><div class="sk-lines"><div class="sk-line w75"></div><div class="sk-line w45"></div><div class="sk-line w60"></div></div></div>
+						<div class="sk-card"><div class="sk-swatch"></div><div class="sk-lines"><div class="sk-line w75"></div><div class="sk-line w45"></div><div class="sk-line w60"></div></div></div>
+						<div class="sk-card"><div class="sk-swatch"></div><div class="sk-lines"><div class="sk-line w75"></div><div class="sk-line w45"></div><div class="sk-line w60"></div></div></div>
+						<div class="sk-card"><div class="sk-swatch"></div><div class="sk-lines"><div class="sk-line w75"></div><div class="sk-line w45"></div><div class="sk-line w60"></div></div></div>
+					</div>
+				</div>
+				<div class="wrap">
+					<div class="stats" id="stats" hidden>
+						<div class="stat c-pri">
+							<span class="statnum" data-count="0">0</span
+							><span class="statlabel">community themes</span>
+						</div>
+						<div class="stat c-sec">
+							<span class="statnum" data-count="0">0</span
+							><span class="statlabel">votes cast</span>
+						</div>
+						<div class="stat c-ter">
+							<span class="statnum" data-count="0">0</span
+							><span class="statlabel">times applied</span>
+						</div>
+					</div>
+					<div class="trending-foot">
+						<a class="textlink" href="themes.html"
+							>See every theme<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path
+									d="M13.3 5.3a1 1 0 0 1 1.4 0l6 6a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.4-1.4l4.3-4.3H4a1 1 0 1 1 0-2h13.6l-4.3-4.3a1 1 0 0 1 0-1.4Z"
+								/></svg
+						></a>
+					</div>
+				</div>
+			</section>
+
+			<section class="sec" id="how" aria-labelledby="how-title">
+				<div class="wrap">
+					<header class="sec-head">
+						<h2 id="how-title">From your phone to this page.</h2>
+						<p class="sec-lead">
+							Themes come out of the app, go through a person, and come
+							back to everyone else's app.
+						</p>
+					</header>
+					<ol class="steps">
+						<li class="step c-pri">
+							<span class="step-num" aria-hidden="true">01</span>
+							<h3>Build it</h3>
+							<p>
+								Make a palette in ColorBlendr: seed colors, Monet styles,
+								saturation, per-shade overrides.
+							</p>
+						</li>
+						<li class="step c-sec">
+							<span class="step-num" aria-hidden="true">02</span>
+							<h3>Share it</h3>
+							<p>
+								Submit it anonymously from the Community screen. A person
+								reviews every submission before it goes live.
+							</p>
+						</li>
+						<li class="step c-ter">
+							<span class="step-num" aria-hidden="true">03</span>
+							<h3>Apply it</h3>
+							<p>
+								One tap in the app themes the whole device with any theme
+								from the catalog.
+							</p>
+						</li>
+					</ol>
+				</div>
+			</section>
+
+			<section class="sec" id="engine" aria-labelledby="engine-title">
+				<div class="wrap">
+					<header class="sec-head">
+						<h2 id="engine-title">What happens when you tap apply.</h2>
+					</header>
+					<div class="prose">
+						<p>
+							Android 12 introduced Monet: the system derives a tonal
+							palette from your wallpaper and locks you out of the rest.
+							ColorBlendr works at the layer underneath. It builds its
+							palettes on-device (six tonal rows, thirteen shades each)
+							and injects them at runtime through the
+							<code>FabricatedOverlay</code> API or the system's theme
+							customization settings. No APK overlays are compiled and no
+							system partition is touched. Removing a theme is the same
+							operation as applying one.
+						</p>
+						<p>
+							Every change previews live inside the app before anything
+							reaches the system. A staged preferences layer holds your
+							edits in memory; commit applies the overlay, discard drops
+							it. The engine re-applies your configuration on boot,
+							wallpaper change, and dark-mode switches through
+							event-driven broadcast receivers. Nothing polls.
+						</p>
+					</div>
+					<div class="modes">
+						<div class="mode m-root c-acc">
+							<span class="shape cookie" aria-hidden="true"></span>
+							<h3>Root</h3>
+							<p>
+								The full engine. Fabricated overlays register directly
+								with the system's overlay service, so palette changes land
+								instantly, without a reboot. Per-shade overrides on
+								every palette row, saturation and lightness sliders from 0 to
+								200%, per-app theming, and one-tap community themes.
+							</p>
+							<p class="mode-setup">Grant root once</p>
+						</div>
+						<div class="mode c-sec">
+							<span class="shape flower" aria-hidden="true"></span>
+							<h3>Shizuku</h3>
+							<p>
+								No root required. A helper process at shell privilege
+								writes the system's theme customization settings directly.
+								Any seed color and Monet style; settings persist across
+								reboots.
+							</p>
+							<p class="mode-setup">Start Shizuku after each boot</p>
+						</div>
+						<div class="mode c-ter">
+							<span class="shape clover" aria-hidden="true"></span>
+							<h3>Wireless ADB</h3>
+							<p>
+								The same shell-privilege path, negotiated on-device over
+								the ADB TLS protocol. Pair once with your own device; no
+								computer involved afterward.
+							</p>
+							<p class="mode-setup">Pair once over Wi-Fi</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="sec" id="compare" aria-labelledby="compare-title">
+				<div class="wrap">
+					<header class="sec-head">
+						<h2 id="compare-title">Next to what Android already offers.</h2>
+					</header>
+					<div class="tablewrap">
+						<table class="compare">
+							<caption class="sr-only">
+								How ColorBlendr compares with stock Android theming, OEM
+								theming, and legacy Substratum.
+							</caption>
+							<thead>
+								<tr>
+									<th scope="col">Capability</th>
+									<th scope="col">ColorBlendr</th>
+									<th scope="col">Stock Android 12+</th>
+									<th scope="col">OEM theming</th>
+									<th scope="col">Substratum (legacy)</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<th scope="row">Apply speed</th>
+									<td data-m="ColorBlendr">Instant, runtime</td>
+									<td data-m="Stock Android 12+">
+										Wallpaper change + regeneration
+									</td>
+									<td data-m="OEM theming">Instant, preset-bound</td>
+									<td data-m="Substratum (legacy)">
+										Reboot or SystemUI restart
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">Works without root</th>
+									<td data-m="ColorBlendr">
+										Yes, via Shizuku or Wireless ADB
+									</td>
+									<td data-m="Stock Android 12+">Yes</td>
+									<td data-m="OEM theming">Yes</td>
+									<td data-m="Substratum (legacy)">
+										Mostly no<sup>1</sup>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">Custom seed color</th>
+									<td data-m="ColorBlendr">Any color, any source</td>
+									<td data-m="Stock Android 12+">
+										Wallpaper-derived only
+									</td>
+									<td data-m="OEM theming">Preset packs</td>
+									<td data-m="Substratum (legacy)">
+										Per-overlay, precompiled
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">Per-shade manual overriding</th>
+									<td data-m="ColorBlendr">
+										Yes, 11 editable shades per row<sup>2</sup>
+									</td>
+									<td data-m="Stock Android 12+">No</td>
+									<td data-m="OEM theming">No</td>
+									<td data-m="Substratum (legacy)">
+										Only if the overlay author shipped it
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">Saturation and lightness control</th>
+									<td data-m="ColorBlendr">
+										Sliders, 0 to 200%, per mode<sup>2</sup>
+									</td>
+									<td data-m="Stock Android 12+">No</td>
+									<td data-m="OEM theming">Limited presets</td>
+									<td data-m="Substratum (legacy)">No</td>
+								</tr>
+								<tr>
+									<th scope="row">Pitch-black AMOLED rendering</th>
+									<td data-m="ColorBlendr">Yes, one switch<sup>2</sup></td>
+									<td data-m="Stock Android 12+">No</td>
+									<td data-m="OEM theming">Partial<sup>3</sup></td>
+									<td data-m="Substratum (legacy)">Per-overlay</td>
+								</tr>
+								<tr>
+									<th scope="row">Storage footprint</th>
+									<td data-m="ColorBlendr">
+										None; overlays are fabricated in memory
+									</td>
+									<td data-m="Stock Android 12+">None</td>
+									<td data-m="OEM theming">None</td>
+									<td data-m="Substratum (legacy)">
+										APK per overlay, accumulates
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">Survives OS updates</th>
+									<td data-m="ColorBlendr">
+										Yes, re-applies from saved config
+									</td>
+									<td data-m="Stock Android 12+">Yes</td>
+									<td data-m="OEM theming">Yes</td>
+									<td data-m="Substratum (legacy)">
+										Frequently breaks, needs rebuilds
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">Community sharing</th>
+									<td data-m="ColorBlendr">
+										Anonymous, human-reviewed, in-app
+									</td>
+									<td data-m="Stock Android 12+">No</td>
+									<td data-m="OEM theming">Locked to OEM stores</td>
+									<td data-m="Substratum (legacy)">
+										Third-party packs, unreviewed
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div class="footnotes">
+						<p>
+							1. Substratum's rootless "Andromeda" mode required a PC
+							tether per boot and died with Android 10.
+						</p>
+						<p>
+							2. Root mode only; Shizuku and Wireless ADB modes cover seed
+							color and style selection.
+						</p>
+						<p>
+							3. OEM dark modes darken surfaces but rarely reach true
+							#000000 across system UI.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<section class="sec" id="faq" aria-labelledby="faq-title">
+				<div class="wrap">
+					<header class="sec-head">
+						<h2 id="faq-title">Questions from power users.</h2>
+					</header>
+					<dl class="faq">
+						<div class="qa">
+							<dt>
+								How does ColorBlendr change system colors without
+								permanently modifying the system?
+							</dt>
+							<dd>
+								<p>
+									Through <code>FabricatedOverlay</code>, an Android 12+
+									API that registers resource overlays with the
+									OverlayManagerService at runtime. Nothing is written
+									to <code>/system</code> or <code>/vendor</code>, no
+									APK is installed, and no partition is remounted.
+									Unregistering the overlay restores stock behavior in
+									the same second.
+								</p>
+								<p>
+									In Shizuku and Wireless ADB modes, ColorBlendr instead
+									writes the documented
+									<code>theme_customization_overlay_packages</code>
+									secure setting, the same mechanism the stock
+									wallpaper picker uses, with more of its fields filled
+									in.
+								</p>
+							</dd>
+						</div>
+						<div class="qa">
+							<dt>Why don't Samsung OneUI system apps change color?</dt>
+							<dd>
+								<p>
+									OneUI's system apps read from Samsung's own palette
+									pipeline, not Monet. ColorBlendr replaces the Monet
+									palette, so every app that honors Material You (Google
+									apps, most modern third-party apps) follows it.
+									Samsung's own UI ignores Monet by design, and no
+									overlay-based tool can change that without modifying
+									Samsung's framework itself.
+								</p>
+							</dd>
+						</div>
+						<div class="qa">
+							<dt>Do the background service and live previews drain battery?</dt>
+							<dd>
+								<p>
+									The service exists to keep broadcast receivers alive;
+									it reacts to wallpaper changes, boot, and dark-mode
+									switches. There is no polling, and between events it
+									is idle.
+								</p>
+								<p>
+									Live preview never touches the system at all: it
+									loads the candidate palette into the app's own process
+									through <code>ResourcesLoader</code>, so previewing
+									costs the same as rendering any app screen. The
+									palette math (the CAM16 color appearance model) runs
+									once per change, in milliseconds, then is cached.
+								</p>
+							</dd>
+						</div>
+						<div class="qa">
+							<dt>What happens to my overrides after a reboot or ROM update?</dt>
+							<dd>
+								<p>
+									Your configuration is the source of truth, stored in
+									app data rather than in the overlay. After boot, once
+									you unlock, a receiver re-registers the overlay from
+									that configuration. ROM updates that clear registered
+									overlays are handled the same way: the next boot
+									re-applies everything.
+								</p>
+								<p>
+									Per-shade overrides, sliders, and saved styles also
+									travel inside backup files you can export and restore.
+								</p>
+							</dd>
+						</div>
+						<div class="qa">
+							<dt>How does anonymous sharing work without accounts?</dt>
+							<dd>
+								<p>
+									Submitting a theme uploads only the color
+									specification plus the name and description you type.
+									A person reviews it as a public pull request before it
+									appears. Voting needs duplicate protection, so the app
+									sends a one-way SHA-256 hash of the device identifier
+									with an app-specific salt. It cannot be reversed,
+									cannot be correlated across apps, and is stored only to
+									enforce one vote per device.
+								</p>
+								<p>
+									No accounts, no analytics, no advertising identifiers.
+									The whole pipeline is public: repository, review
+									process, and serving infrastructure.
+								</p>
+							</dd>
+						</div>
+					</dl>
+				</div>
+			</section>
+
+			<section class="closer" aria-labelledby="closer-title">
+				<span class="shape flower" aria-hidden="true"></span>
+				<span class="shape cookie" aria-hidden="true"></span>
+				<div class="wrap closer-in">
+					<h2 id="closer-title">Share what you made</h2>
+					<div class="closer-side">
+						<div>
+							<p>
+								Every theme here came out of the app. Build a palette you
+								like, share it from the Community screen, and it shows up
+								once a person has reviewed it.
+							</p>
+							<p class="closer-meta">
+								Open source &middot; No accounts &middot; No tracking
+							</p>
+						</div>
+						<div class="cta">
+							<a class="btn primary" href="themes.html">Browse all themes</a>
+							<a
+								class="textlink"
+								href="https://github.com/Mahmud0808/ColorBlendr/releases/latest"
+								>Get ColorBlendr<svg viewBox="0 0 24 24" aria-hidden="true">
+									<path
+										d="M13.3 5.3a1 1 0 0 1 1.4 0l6 6a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.4-1.4l4.3-4.3H4a1 1 0 1 1 0-2h13.6l-4.3-4.3a1 1 0 0 1 0-1.4Z"
+									/></svg
+							></a>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<footer class="site-foot">
+			<div class="ramp ramp-thin" aria-hidden="true">
+				<span style="--c: var(--ramp-0)"></span>
+				<span style="--c: var(--ramp-1)"></span>
+				<span style="--c: var(--ramp-2)"></span>
+				<span style="--c: var(--ramp-3)"></span>
+				<span style="--c: var(--ramp-4)"></span>
+				<span style="--c: var(--ramp-5)"></span>
+				<span style="--c: var(--ramp-6)"></span>
+				<span style="--c: var(--ramp-7)"></span>
+				<span style="--c: var(--ramp-8)"></span>
+				<span style="--c: var(--ramp-9)"></span>
+				<span style="--c: var(--ramp-10)"></span>
+				<span style="--c: var(--ramp-11)"></span>
+				<span style="--c: var(--ramp-12)"></span>
+			</div>
+			<div class="wrap foot-in">
+				<div class="foot-brand">
+					<a class="brand" href="index.html">
+						<svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
+							<circle cx="50" cy="50" r="50" fill="url(#lg)" />
+							<g
+								transform="translate(50,50) scale(1.5) translate(-50,-50) translate(26.777779,26.777779) scale(0.46444446)"
+							>
+								<path
+									fill="#fff"
+									fill-opacity="0.4"
+									d="M86.2,66.5Q86.8,61.7 86.1,57.2C104.3,66.1 106.8,81 82,81C59.7,81 29.9,74.8 10,61.2C-4.9,51.2 -4.9,38.8 21.2,39Q18.6,43.1 17.3,46.2Q0.1,46 12.8,54.6C34.8,68.6 62.1,73.6 84.5,74.4Q99.4,74.4 86.2,66.5z"
+								/>
+								<path
+									fill="#fff"
+									fill-opacity="0.902"
+									d="M82.6,70.2C56.5,68.5 34.3,62.5 18,52.5C20,43.5 33,24 49.8,6.6C72.5,31.5 88.3,50.5 82.6,70.2zM73.4,84.7C56,101 24,94 17.2,70.3C30.8,78.5 48.7,83.6 73.4,84.7z"
+								/>
+							</g>
+						</svg>
+						<span>ColorBlendr</span>
+						<small>community</small>
+					</a>
+					<p>Open source &middot; No accounts &middot; No tracking</p>
+				</div>
+				<nav class="foot-links" aria-label="Elsewhere">
+					<a href="https://mahmud0808.github.io/ColorBlendr/">ColorBlendr app</a>
+					<a href="themes.html">All themes</a>
+					<a href="https://github.com/Mahmud0808/ColorBlendr-Themes">GitHub</a>
+					<a href="https://t.me/DrDsProjects">Telegram</a>
+				</nav>
+			</div>
+		</footer>
 
 		<script type="module">
-			import { initHome } from "./assets/site.js?v=5";
+			import { initHome } from "./assets/site.js?v=6";
 			initHome();
 		</script>
 	</body>

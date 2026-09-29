@@ -1,15 +1,3 @@
-// ColorBlendr community themes worker.
-// Endpoints:
-//   POST /vote     { themeId, device }           -> { voted, upvotes }  (dedup device|ip)
-//   POST /download { themeId, device }           -> { downloads }       (dedup device|ip)
-//   GET  /votes?device=<hash>                    -> { themeIds: [...] }
-//   GET  /counts                                 -> { upvotes: {id: n}, downloads: {id: n} }
-//   POST /upload   { payload, turnstileToken }   -> { prUrl }
-//   POST /report   { themeId, device }           -> { reported }
-//   GET  /theme/<id>                             -> share landing page (HTML)
-//
-// Secrets: GITHUB_TOKEN, TURNSTILE_SECRET. Vars: GITHUB_REPO.
-
 import {
 	Hct,
 	SchemeContent,
@@ -25,7 +13,6 @@ import {
 	hexFromArgb,
 } from "@material/material-color-utilities";
 
-// App MONET style -> MCU scheme; CMF is app-custom -> TonalSpot fallback.
 const SCHEME_BY_STYLE = {
 	MONOCHROMATIC: SchemeMonochrome,
 	TONAL_SPOT: SchemeTonalSpot,
@@ -39,7 +26,6 @@ const SCHEME_BY_STYLE = {
 	CMF: SchemeTonalSpot,
 };
 
-// App enum ordinal -> MCU spec. JS lib has no 2026 yet; nearest is 2025.
 const SPEC_BY_VERSION = { 0: "2021", 1: "2025", 2: "2025" };
 const DEFAULT_SPEC = "2025";
 
@@ -86,16 +72,10 @@ const SHADE_STEPS = [
 const VALID_SHADES = new Set(
 	SHADE_ROWS.flatMap((row) => SHADE_STEPS.map((step) => `${row}_${step}`)),
 );
-// /counts is served from the colo cache for this long; writes purge it in
-// the colo that handled them, so only other users see a stale total.
 const COUNTS_CACHE_SECONDS = 600;
 const MAX_UPLOADS_PER_DAY = 3;
 const MAX_REPORTS_PER_DAY = 3;
 
-// colorOverrides keys are Android palette resources, system_<row>_<step>.
-// Steps are fixed tonal stops; MCU roles land between them (dark surface is
-// tone 4, surfaceContainer 9), so overrides act as hue/chroma anchors and the
-// role keeps its own tone. Mirrors assets/site.js so both previews agree.
 const relLum = (hex) => {
 	const c = [1, 3, 5].map((i) => {
 		const v = parseInt(hex.slice(i, i + 2), 16) / 255;
@@ -121,10 +101,6 @@ function ensureContrast(fg, bg, min = 4.5) {
 	return out;
 }
 
-// Port of the app's palette pipeline (ColorSchemeUtil.generateColorPalette,
-// ColorModifiers.modifyColors, CommunityThemePalette.derive, DynamicColors).
-// Order matters: palette, then modifiers, then the theme's own hexes, then
-// pitch black. Roles read fixed indices out of the finished palette.
 const TONES = [100, 99, 95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0];
 const TINTS = TONES.map((t) => t / 100);
 const SHADES = [
@@ -151,7 +127,6 @@ const ROW_NAMES = [
 	"system_error",
 ];
 
-// [row, darkIndex, lightIndex, darkLightnessAdjustment, lightLightnessAdjustment]
 const ROLE_MAP = {
 	primary: [0, 4, 8],
 	primaryContainer: [0, 9, 3],
@@ -229,7 +204,6 @@ function buildRows(seedHex, style, spec, dark, sliders, theme) {
 	rows.forEach((row, i) => {
 		const accent = i <= 2 || i === 5;
 		const neutral = i === 3 || i === 4;
-		// The app modifies shades 1..12; shade 0 is left alone.
 		for (let j = 1; j < row.length; j++) {
 			if (accent && accentSat !== 100 && !mono) {
 				row[j] = adjustSaturation(row[j], accentSat);
@@ -273,7 +247,6 @@ function roleReader(rows, dark) {
 	};
 }
 
-// Slider values for the active mode; the app ignores them for MONOCHROMATIC.
 function themeSliders(theme, isDark) {
 	if (!theme || theme.style === "MONOCHROMATIC") {
 		return { accentSat: 100, bgSat: 100, bgLight: 100 };
@@ -323,7 +296,7 @@ export default {
 				request.method === "GET" &&
 				url.pathname.startsWith("/theme/")
 			) {
-				return await themePage(url, env);
+				return await themePage(url, env, ctx);
 			}
 			return json({ error: "not found" }, 404);
 		} catch (e) {
@@ -332,8 +305,6 @@ export default {
 	},
 };
 
-// One report per device per theme. First report on a theme opens a GitHub
-// issue (the notify workflow mentions the owner); later ones just count.
 async function report(request, env) {
 	const body = await request.json().catch(() => null);
 	const themeId = body?.themeId;
@@ -342,8 +313,6 @@ async function report(request, env) {
 		return json({ error: "bad request" }, 400);
 	}
 
-	// Reports (and the issue they can open via the bot token) are only
-	// accepted for themes that actually exist in the index.
 	if (!(await themeExists(themeId, env))) {
 		return json({ error: "not found" }, 404);
 	}
@@ -352,8 +321,6 @@ async function report(request, env) {
 		request.headers.get("cf-connecting-ip") ?? "unknown",
 	);
 
-	// Rate limit across all themes by device OR ip so neither device
-	// rotation nor a VPN unlocks unlimited reports.
 	const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
 	const recent = await env.DB.prepare(
 		"SELECT COUNT(*) AS c FROM reports WHERE (device = ? OR ip = ?) AND created > ?",
@@ -364,7 +331,6 @@ async function report(request, env) {
 		return json({ error: "rate limited" }, 429);
 	}
 
-	// Same identity (device OR ip) reports a theme at most once.
 	if (await identityExists("reports", themeId, device, ip, env)) {
 		return json({ reported: true });
 	}
@@ -381,7 +347,6 @@ async function report(request, env) {
 		.bind(themeId)
 		.first();
 	if ((count?.c ?? 0) === 1) {
-		// Best-effort; the report is recorded either way.
 		try {
 			await openReportIssue(env, themeId);
 		} catch {}
@@ -421,11 +386,15 @@ async function openReportIssue(env, themeId) {
 	});
 }
 
-// Share landing page: theme summary + "open in app" deep link. The custom
-// scheme only resolves if the app is installed; page explains the fallback.
-async function themePage(url, env) {
+async function themePage(url, env, ctx) {
 	const id = url.pathname.slice("/theme/".length);
 	if (!ID_REGEX.test(id)) return new Response("Not found", { status: 404 });
+
+	const cache = caches.default;
+	const cacheKey = new Request(`${url.origin}/theme/${id}`);
+	const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+	const cached = local ? null : await cache.match(cacheKey);
+	if (cached) return cached;
 
 	const indexResponse = await fetch(
 		`https://raw.githubusercontent.com/${env.GITHUB_REPO}/main/index.json`,
@@ -450,9 +419,6 @@ async function themePage(url, env) {
 				})[c],
 		);
 
-	// Counts of 1000+ collapse to 1K / 1.1K, matching the site's cards.
-	// Truncated, never rounded up, so the shown figure is never ahead of the
-	// real one.
 	const compact = (n) => {
 		const value = Number(n) || 0;
 		if (value < 1000) return String(value);
@@ -461,8 +427,6 @@ async function themePage(url, env) {
 		return `${Number.isInteger(scaled) ? scaled : scaled.toFixed(1)}${unit}`;
 	};
 
-	// Style -> MCU scheme + theme sliders on top = matches applied look.
-	// Both modes derived; CSS swaps via prefers-color-scheme.
 	const seed = HEX_COLOR.test(theme.seedColor ?? "")
 		? theme.seedColor
 		: "#4285F4";
@@ -475,6 +439,8 @@ async function themePage(url, env) {
 	const isMono = theme.style === "MONOCHROMATIC";
 
 	const spec = SPEC_BY_VERSION[theme.colorSpecVersion] ?? DEFAULT_SPEC;
+
+	const GALLERY = "https://mahmud0808.github.io/ColorBlendr-Themes/";
 
 	const buildPalette = (isDark) => {
 		const rows = buildRows(
@@ -490,12 +456,8 @@ async function themePage(url, env) {
 
 		const accent = role("primary");
 		const tonal = role("primaryContainer");
+		const secC = role("secondaryContainer");
 
-		// Pitch black (and themes that override the neutral shades to #000)
-		// can flatten surface and the container roles onto the same black, so
-		// the card and its chips lose every edge. Lift the containers to a
-		// tone floor above the surface; themes with real separation already
-		// clear it untouched.
 		const surface = role("surface");
 		const surfaceTone = toneOf(surface);
 		const elevated = (name, floor) => {
@@ -512,60 +474,53 @@ async function themePage(url, env) {
 			body2: role("onSurfaceVariant"),
 			accent,
 			"on-accent": ensureContrast(role("onPrimary"), accent),
-			card: elevated("surfaceContainer", 4),
 			"card-high": elevated("surfaceContainerHigh", 7),
 			tonal,
 			"on-tonal": ensureContrast(role("onPrimaryContainer"), tonal),
-			"outline-v": role("outlineVariant"),
+			"sec-c": secC,
+			"on-sec-c": ensureContrast(role("onSecondaryContainer"), secC),
 			swHalf: at(0, 80),
 			swQ1: at(2, 70),
 			swQ2: at(1, 60),
 			swSquare: at(4, 30),
 			swCenter: seed,
 		};
+		rows[0].forEach((hex, idx) => {
+			colors[`r${idx}`] = hex;
+			colors[`o${idx}`] = relLum(hex) > 0.2 ? "#0a0e12c7" : "#ffffffe0";
+		});
 		return { rows, colors };
 	};
 
 	const dark = buildPalette(true);
 	const lightMode = buildPalette(false);
-	// Launcher gradient stops; a single favicon, so the dark palette drives it.
 	const logoStops = [dark.rows[0][4], dark.rows[0][8]];
 	const cssVars = (c) =>
 		Object.entries(c)
-			.map(([k, v]) => `--${k}: ${v};`)
-			.join(" ");
+			.map(([k, v]) => `--${k}:${v};`)
+			.join("");
 
-	// SVG twin of the app's WallColorPreviewCanvas (64 box, pad 8, corner 16,
-	// dot r13), same geometry the gallery cards use. Fills are CSS vars so
-	// the light-mode override swaps the whole swatch.
-	const swatch = `<svg class="tswatch" viewBox="0 0 64 64" role="img" aria-label="Theme color preview">
-    <rect width="64" height="64" rx="16" fill="var(--swSquare)"/>
-    <path d="M8 32 A24 24 0 0 1 56 32 Z" fill="var(--swHalf)"/>
-    <path d="M32 32 L32 56 A24 24 0 0 1 8 32 Z" fill="var(--swQ1)"/>
-    <path d="M32 32 L56 32 A24 24 0 0 1 32 56 Z" fill="var(--swQ2)"/>
-    <circle cx="32" cy="32" r="13" fill="var(--swCenter)"/>
-    <rect class="ring" x=".5" y=".5" width="63" height="63" rx="15.5" fill="none"/>
-  </svg>`;
+	const styleName = String(theme.style ?? "TONAL_SPOT")
+		.toLowerCase()
+		.split("_")
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
 
-	// Favicon = ColorBlendr launcher mark (drop + swoosh) on a seed-tinted
-	// gradient disc, mirroring the app icon's dynamic background.
-	const favicon =
-		"data:image/svg+xml," +
-		encodeURIComponent(
-			`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
-				`<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-				`<stop offset="0" stop-color="${logoStops[0]}"/>` +
-				`<stop offset="1" stop-color="${logoStops[1]}"/>` +
-				`</linearGradient></defs>` +
-				`<circle cx="50" cy="50" r="50" fill="url(#g)"/>` +
-				`<g transform="translate(50,50) scale(1.5) translate(-50,-50) translate(26.777779,26.777779) scale(0.46444446)">` +
-				`<path fill="#fff" fill-opacity="0.4" d="M86.2,66.5Q86.8,61.7 86.1,57.2C104.3,66.1 106.8,81 82,81C59.7,81 29.9,74.8 10,61.2C-4.9,51.2 -4.9,38.8 21.2,39Q18.6,43.1 17.3,46.2Q0.1,46 12.8,54.6C34.8,68.6 62.1,73.6 84.5,74.4Q99.4,74.4 86.2,66.5z"/>` +
-				`<path fill="#fff" fill-opacity="0.902" d="M82.6,70.2C56.5,68.5 34.3,62.5 18,52.5C20,43.5 33,24 49.8,6.6C72.5,31.5 88.3,50.5 82.6,70.2zM73.4,84.7C56,101 24,94 17.2,70.3C30.8,78.5 48.7,83.6 73.4,84.7z"/>` +
-				`</g></svg>`,
-		);
+	const swatch = `<svg class="sw" viewBox="0 0 64 64" role="img" aria-label="Theme color preview"><rect width="64" height="64" rx="16" fill="var(--swSquare)"/><path d="M8 32A24 24 0 0 1 56 32Z" fill="var(--swHalf)"/><path d="M32 32L32 56A24 24 0 0 1 8 32Z" fill="var(--swQ1)"/><path d="M32 32L56 32A24 24 0 0 1 32 56Z" fill="var(--swQ2)"/><circle cx="32" cy="32" r="13" fill="var(--swCenter)"/><rect x=".5" y=".5" width="63" height="63" rx="15.5" fill="none" stroke="currentColor" stroke-opacity=".22"/></svg>`;
 
-	const thumbIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M13.12 2.06 7.58 7.6c-.37.37-.58.88-.58 1.41V19c0 1.1.9 2 2 2h9c.8 0 1.52-.48 1.84-1.21l3.26-7.61C23.94 10.2 22.49 8 20.34 8h-5.65l.95-4.58c.1-.5-.05-1.01-.41-1.37-.59-.58-1.53-.58-2.11.01ZM3 21c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2s-2 .9-2 2v8c0 1.1.9 2 2 2Z"/></svg>`;
-	const downloadIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M16.59 9H15V4c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v5H7.41c-.89 0-1.34 1.08-.71 1.71l4.59 4.59c.39.39 1.02.39 1.41 0l4.59-4.59c.63-.63.19-1.71-.7-1.71ZM5 19c0 .55.45 1 1 1h12c.55 0 1-.45 1-1s-.45-1-1-1H6c-.55 0-1 .45-1 1Z"/></svg>`;
+	const logoMark =
+		`<g transform="translate(50,50) scale(1.5) translate(-50,-50) translate(26.777779,26.777779) scale(0.46444446)">` +
+		`<path fill="#fff" fill-opacity="0.4" d="M86.2,66.5Q86.8,61.7 86.1,57.2C104.3,66.1 106.8,81 82,81C59.7,81 29.9,74.8 10,61.2C-4.9,51.2 -4.9,38.8 21.2,39Q18.6,43.1 17.3,46.2Q0.1,46 12.8,54.6C34.8,68.6 62.1,73.6 84.5,74.4Q99.4,74.4 86.2,66.5z"/>` +
+		`<path fill="#fff" fill-opacity="0.902" d="M82.6,70.2C56.5,68.5 34.3,62.5 18,52.5C20,43.5 33,24 49.8,6.6C72.5,31.5 88.3,50.5 82.6,70.2zM73.4,84.7C56,101 24,94 17.2,70.3C30.8,78.5 48.7,83.6 73.4,84.7z"/>` +
+		`</g>`;
+	const logo = (a, b) =>
+		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:${a}"/><stop offset="1" style="stop-color:${b}"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#g)"/>${logoMark}</svg>`;
+	const favicon = "data:image/svg+xml," + encodeURIComponent(logo(...logoStops));
+
+	const icon = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+	const ramp = SHADES.map(
+		(shade, idx) => `<span style="--c:var(--r${idx});--o:var(--o${idx})"><em>${shade}</em></span>`,
+	).join("");
 
 	const html = `<!doctype html>
 <html lang="en">
@@ -583,136 +538,91 @@ async function themePage(url, env) {
 <meta property="og:url" content="${esc(url.origin)}/theme/${esc(id)}">
 <title>${esc(theme.name)} - ColorBlendr</title>
 <style>
-  :root {
-    ${cssVars(dark.colors)}
-  }
-  @media (prefers-color-scheme: light) {
-    :root { ${cssVars(lightMode.colors)} }
-  }
-  * { box-sizing: border-box; }
-  body {
-    /* dvh tracks mobile browser bars; vh fallback for old engines. */
-    margin: 0; min-height: 100vh; min-height: 100dvh;
-    display: flex; align-items: center; justify-content: center;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg); color: var(--text);
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-  }
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(18px) scale(.98); }
-    to { opacity: 1; transform: none; }
-  }
-  @keyframes fadeup {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: none; }
-  }
-  @keyframes pop {
-    from { opacity: 0; transform: scale(.4); }
-    60% { transform: scale(1.08); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  .card {
-    position: relative; z-index: 1;
-    width: min(400px, calc(100vw - 32px)); margin: 24px;
-    padding: 40px 32px 32px; text-align: center;
-    background: var(--card); border-radius: 28px;
-    box-shadow: 0 30px 70px rgba(0, 0, 0, .45);
-    animation: rise .5s cubic-bezier(.2,.7,.2,1) backwards;
-  }
-  .card > * { animation: fadeup .45s cubic-bezier(.2,.7,.2,1) backwards; }
-  .card > :nth-child(2) { animation-delay: .06s; }
-  .card > :nth-child(3) { animation-delay: .1s; }
-  .card > :nth-child(4) { animation-delay: .14s; }
-  .card > :nth-child(5) { animation-delay: .18s; }
-  .card > :nth-child(6) { animation-delay: .22s; }
-  .card > :nth-child(7) { animation-delay: .26s; }
-  .card > :nth-child(8) { animation-delay: .3s; }
-  .brand {
-    font-size: 13px; font-weight: 600; color: var(--subtle); margin-bottom: 28px;
-  }
-  /* .card > * sets fadeup on every child and :nth-child(2) sets its delay,
-     both (0,2,0); matching that specificity here keeps pop and its delay. */
-  .card > .tswatch {
-    display: block; width: 104px; height: 104px; margin: 0 auto 20px;
-    animation: pop .55s cubic-bezier(.2,.7,.2,1) .12s backwards;
-    transition: transform .25s cubic-bezier(.2,.7,.2,1);
-  }
-  .tswatch:hover { transform: scale(1.06) rotate(-3deg); }
-  /* Near-black neutral squares (or overridden ones) sit on a near-black card
-     and lose their edge; the ring keeps the tile readable in both modes. */
-  .tswatch .ring {
-    stroke: color-mix(in srgb, var(--text) 22%, transparent);
-    stroke-width: 1;
-  }
-  h1 { margin: 0 0 6px; font-size: clamp(26px, 7vw, 32px); font-weight: 800; letter-spacing: -.03em; }
-  .author { color: var(--subtle); margin: 0 0 16px; font-size: 14px; }
-  .desc { color: var(--body2); font-size: 15px; line-height: 1.6; margin: 0 0 20px; }
-  .chips { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 14px; border-radius: 999px;
-    background: var(--card-high); color: var(--body2);
-    font-size: 13px; font-weight: 600;
-    transition: transform .2s cubic-bezier(.2,.7,.2,1);
-  }
-  .chip:hover { transform: translateY(-2px); }
-  .chip svg { display: block; }
-  a.btn {
-    display: flex; align-items: center; justify-content: center; gap: 9px;
-    padding: 16px 26px; border-radius: 999px; text-decoration: none;
-    font-size: 15px; font-weight: 600; line-height: 1;
-    transition: filter .15s ease, transform .12s ease,
-                border-radius .25s cubic-bezier(.2,.7,.2,1);
-  }
-  a.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
-  a.btn:active { transform: scale(.97); border-radius: 18px; }
-  .open { background: var(--accent); color: var(--on-accent); }
-  .get { background: var(--tonal); color: var(--on-tonal); margin-top: 10px; }
-  @media (prefers-reduced-motion: reduce) {
-    .card, .card > * { animation: none; }
-    .tswatch, .chip, a.btn { transition: none; }
-  }
+@font-face{font-family:"Google Sans Flex";src:url("${GALLERY}assets/fonts/google-sans-flex.woff2") format("woff2");font-weight:100 1000;font-display:swap}
+:root{color-scheme:dark;${cssVars(dark.colors)}--morph:cubic-bezier(.2,0,0,1);--ease:cubic-bezier(.2,.7,.2,1);--g:clamp(20px,4.5vw,48px);--ck:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M100.0 4.0 L102.5 4.3 L105.0 5.1 L107.4 6.4 L109.7 8.0 L111.9 9.8 L114.0 11.7 L116.0 13.4 L118.1 15.0 L120.1 16.1 L122.3 16.9 L124.5 17.3 L126.9 17.3 L129.4 17.0 L132.1 16.5 L134.8 15.9 L137.6 15.5 L140.4 15.2 L143.1 15.3 L145.7 15.8 L148.0 16.9 L150.0 18.4 L151.8 20.3 L153.2 22.6 L154.4 25.1 L155.4 27.8 L156.3 30.5 L157.2 33.0 L158.2 35.4 L159.4 37.4 L160.8 39.2 L162.6 40.6 L164.6 41.8 L167.0 42.8 L169.5 43.7 L172.2 44.6 L174.9 45.6 L177.4 46.8 L179.7 48.2 L181.6 50.0 L183.1 52.0 L184.2 54.3 L184.7 56.9 L184.8 59.6 L184.5 62.4 L184.1 65.2 L183.5 67.9 L183.0 70.6 L182.7 73.1 L182.7 75.5 L183.1 77.7 L183.9 79.9 L185.0 81.9 L186.6 84.0 L188.3 86.0 L190.2 88.1 L192.0 90.3 L193.6 92.6 L194.9 95.0 L195.7 97.5 L196.0 100.0 L195.7 102.5 L194.9 105.0 L193.6 107.4 L192.0 109.7 L190.2 111.9 L188.3 114.0 L186.6 116.0 L185.0 118.1 L183.9 120.1 L183.1 122.3 L182.7 124.5 L182.7 126.9 L183.0 129.4 L183.5 132.1 L184.1 134.8 L184.5 137.6 L184.8 140.4 L184.7 143.1 L184.2 145.7 L183.1 148.0 L181.6 150.0 L179.7 151.8 L177.4 153.2 L174.9 154.4 L172.2 155.4 L169.5 156.3 L167.0 157.2 L164.6 158.2 L162.6 159.4 L160.8 160.8 L159.4 162.6 L158.2 164.6 L157.2 167.0 L156.3 169.5 L155.4 172.2 L154.4 174.9 L153.2 177.4 L151.8 179.7 L150.0 181.6 L148.0 183.1 L145.7 184.2 L143.1 184.7 L140.4 184.8 L137.6 184.5 L134.8 184.1 L132.1 183.5 L129.4 183.0 L126.9 182.7 L124.5 182.7 L122.3 183.1 L120.1 183.9 L118.1 185.0 L116.0 186.6 L114.0 188.3 L111.9 190.2 L109.7 192.0 L107.4 193.6 L105.0 194.9 L102.5 195.7 L100.0 196.0 L97.5 195.7 L95.0 194.9 L92.6 193.6 L90.3 192.0 L88.1 190.2 L86.0 188.3 L84.0 186.6 L81.9 185.0 L79.9 183.9 L77.7 183.1 L75.5 182.7 L73.1 182.7 L70.6 183.0 L67.9 183.5 L65.2 184.1 L62.4 184.5 L59.6 184.8 L56.9 184.7 L54.3 184.2 L52.0 183.1 L50.0 181.6 L48.2 179.7 L46.8 177.4 L45.6 174.9 L44.6 172.2 L43.7 169.5 L42.8 167.0 L41.8 164.6 L40.6 162.6 L39.2 160.8 L37.4 159.4 L35.4 158.2 L33.0 157.2 L30.5 156.3 L27.8 155.4 L25.1 154.4 L22.6 153.2 L20.3 151.8 L18.4 150.0 L16.9 148.0 L15.8 145.7 L15.3 143.1 L15.2 140.4 L15.5 137.6 L15.9 134.8 L16.5 132.1 L17.0 129.4 L17.3 126.9 L17.3 124.5 L16.9 122.3 L16.1 120.1 L15.0 118.1 L13.4 116.0 L11.7 114.0 L9.8 111.9 L8.0 109.7 L6.4 107.4 L5.1 105.0 L4.3 102.5 L4.0 100.0 L4.3 97.5 L5.1 95.0 L6.4 92.6 L8.0 90.3 L9.8 88.1 L11.7 86.0 L13.4 84.0 L15.0 81.9 L16.1 79.9 L16.9 77.7 L17.3 75.5 L17.3 73.1 L17.0 70.6 L16.5 67.9 L15.9 65.2 L15.5 62.4 L15.2 59.6 L15.3 56.9 L15.8 54.3 L16.9 52.0 L18.4 50.0 L20.3 48.2 L22.6 46.8 L25.1 45.6 L27.8 44.6 L30.5 43.7 L33.0 42.8 L35.4 41.8 L37.4 40.6 L39.2 39.2 L40.6 37.4 L41.8 35.4 L42.8 33.0 L43.7 30.5 L44.6 27.8 L45.6 25.1 L46.8 22.6 L48.2 20.3 L50.0 18.4 L52.0 16.9 L54.3 15.8 L56.9 15.3 L59.6 15.2 L62.4 15.5 L65.2 15.9 L67.9 16.5 L70.6 17.0 L73.1 17.3 L75.5 17.3 L77.7 16.9 L79.9 16.1 L81.9 15.0 L84.0 13.4 L86.0 11.7 L88.1 9.8 L90.3 8.0 L92.6 6.4 L95.0 5.1 L97.5 4.3Z'/%3E%3C/svg%3E")}
+@media (prefers-color-scheme:light){:root{color-scheme:light;${cssVars(lightMode.colors)}}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;font:16px/1.6 "Google Sans Flex",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:clip}
+::selection{background:var(--accent);color:var(--on-accent)}
+a{color:inherit;text-decoration:none}
+a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.w{width:100%;max-width:1200px;margin-inline:auto;padding-inline:var(--g)}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;height:72px}
+.brand{display:flex;align-items:center;gap:11px;font-size:19px;font-weight:720;letter-spacing:-.02em;border-radius:12px}
+.brand svg{width:34px;height:34px}
+.nav{display:flex;align-items:center;height:44px;padding:0 20px;border-radius:22px;background:var(--card-high);font-size:15px;font-weight:650;transition:border-radius .4s var(--morph)}
+main{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);align-items:center;gap:clamp(28px,5vw,72px);padding-block:clamp(28px,5vw,72px) clamp(48px,6vw,88px)}
+h1{margin:0 0 18px;font-size:clamp(48px,7.6vw,108px);font-weight:780;letter-spacing:-.055em;word-spacing:.08em;line-height:.92;overflow-wrap:anywhere;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:0 0 22px;color:var(--body2);font-size:15px}
+.meta b{color:var(--text);font-weight:650}
+.tag{padding:6px 12px;border-radius:12px;background:var(--card-high);color:var(--text);font-weight:600}
+.desc{margin:0 0 30px;max-width:46ch;color:var(--body2);font-size:clamp(17px,1.5vw,20px);text-wrap:pretty}
+.stats{display:flex;gap:12px;margin-bottom:34px}
+.stat{display:flex;flex-direction:column;gap:10px;min-width:140px;padding:20px 26px;border-radius:30px;transition:border-radius .5s var(--morph)}
+.stat b{font-size:clamp(38px,4.2vw,56px);font-weight:780;letter-spacing:-.05em;line-height:.9;font-variant-numeric:tabular-nums}
+.stat span{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600}
+.stat svg{width:16px;height:16px;fill:currentColor}
+.pri{background:var(--tonal);color:var(--on-tonal)}
+.sec{background:var(--sec-c);color:var(--on-sec-c)}
+.cta{display:flex;flex-wrap:wrap;align-items:center;gap:18px 28px}
+.btn{display:flex;align-items:center;gap:10px;height:60px;padding:0 30px;border-radius:20px;background:var(--accent);color:var(--on-accent);font-size:16.5px;font-weight:650;transition:border-radius .45s var(--morph),transform .2s var(--ease)}
+.btn svg{width:21px;height:21px;fill:currentColor}
+.btn:active{transform:scale(.96)}
+.link{padding-block:6px;font-size:16.5px;font-weight:650;border-bottom:2.5px solid var(--accent)}
+.note{flex-basis:100%;margin:0;color:var(--subtle);font-size:14px}
+.art{position:relative;display:grid;place-items:center;aspect-ratio:1;color:var(--text)}
+.art::before{content:"";position:absolute;inset:0;background:var(--tonal);-webkit-mask:var(--ck) center/contain no-repeat;mask:var(--ck) center/contain no-repeat;animation:spin 60s linear infinite}
+@keyframes spin{to{rotate:360deg}}
+.sw{position:relative;width:56%;height:auto;filter:drop-shadow(0 24px 32px #0005);transition:transform .6s cubic-bezier(.34,1.45,.64,1)}
+.ramp{display:flex;height:clamp(72px,9vw,120px);margin-top:auto}
+.ramp span{position:relative;flex:1 1 0;min-width:0;background:var(--c);transition:flex-grow .5s cubic-bezier(.34,1.45,.64,1)}
+.ramp em{position:absolute;left:clamp(4px,1vw,14px);bottom:clamp(8px,1.2vw,16px);color:var(--o);font:650 clamp(9px,1vw,13px)/1 ui-monospace,Consolas,monospace}
+@media (hover:hover) and (pointer:fine){.nav:hover{border-radius:14px}.btn:hover{border-radius:30px}.stat:hover{border-radius:50px}.art:hover .sw{transform:scale(1.05) rotate(-6deg)}.ramp span:hover{flex-grow:2.6}}
+@media (max-width:860px){main{grid-template-columns:minmax(0,1fr)}.art{width:min(100%,380px);justify-self:center}}
+@media (max-width:480px){.stat{min-width:0;flex:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<main class="card">
-  <div class="brand">ColorBlendr Community</div>
-  ${swatch}
-  <h1>${esc(theme.name)}</h1>
-  <p class="author">by ${esc(theme.author || "Anonymous")}</p>
-  <p class="desc">${esc(theme.description)}</p>
-  <div class="chips">
-    <span class="chip">${thumbIcon}${compact(theme.upvotes)}</span>
-    <span class="chip">${downloadIcon}${compact(theme.downloads)}</span>
-  </div>
-  <a class="btn open" href="colorblendr://theme/${esc(id)}">Open in ColorBlendr</a>
-  <a class="btn get" href="https://github.com/Mahmud0808/ColorBlendr">Get the app</a>
+<header class="w">
+<a class="brand" href="${GALLERY}">${logo("var(--r4)", "var(--r8)")}ColorBlendr</a>
+<a class="nav" href="${GALLERY}themes.html">All themes</a>
+</header>
+<main class="w">
+<div>
+<h1>${esc(theme.name)}</h1>
+<p class="meta"><span>by <b>${esc(theme.author || "Anonymous")}</b></span><span class="tag">${esc(styleName)}</span></p>
+<p class="desc">${esc(theme.description)}</p>
+<div class="stats">
+<div class="stat pri"><b>${compact(theme.upvotes)}</b><span>${icon("M13.12 2.06 7.58 7.6c-.37.37-.58.88-.58 1.41V19c0 1.1.9 2 2 2h9c.8 0 1.52-.48 1.84-1.21l3.26-7.61C23.94 10.2 22.49 8 20.34 8h-5.65l.95-4.58c.1-.5-.05-1.01-.41-1.37-.59-.58-1.53-.58-2.11.01ZM3 21c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2s-2 .9-2 2v8c0 1.1.9 2 2 2Z")}votes</span></div>
+<div class="stat sec"><b>${compact(theme.downloads)}</b><span>${icon("M16.59 9H15V4c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v5H7.41c-.89 0-1.34 1.08-.71 1.71l4.59 4.59c.39.39 1.02.39 1.41 0l4.59-4.59c.63-.63.19-1.71-.7-1.71ZM5 19c0 .55.45 1 1 1h12c.55 0 1-.45 1-1s-.45-1-1-1H6c-.55 0-1 .45-1 1Z")}applies</span></div>
+</div>
+<div class="cta">
+<a class="btn" href="colorblendr://theme/${esc(id)}">${icon("M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z")}Open in ColorBlendr</a>
+<a class="link" href="https://mahmud0808.github.io/ColorBlendr/">Get the app</a>
+<p class="note">Opening needs ColorBlendr installed on your phone.</p>
+</div>
+</div>
+<div class="art">${swatch}</div>
 </main>
+<div class="ramp" aria-hidden="true">${ramp}</div>
 </body>
 </html>`;
 
-	return new Response(html, {
+	const response = new Response(html, {
 		headers: {
 			"content-type": "text/html; charset=utf-8",
 			"cache-control": "public, max-age=3600",
 		},
 	});
+	if (!local) ctx?.waitUntil(cache.put(cacheKey, response.clone()));
+	return response;
 }
 
-// Pushes an elevation tier off the tone of the one below it when a theme's
-// overrides flatten the ramp. dir: +1 dark (tiers get lighter), -1 light.
-
-// Port of the app's CAM16 lightness slider (ColorUtil.shiftLightness) with
-// optional tone bounds so page surfaces never collapse to black/white.
-
-// Port of the app's CAM16 saturation slider (ColorUtil.adjustSaturation);
-// Hct = same hue/chroma/lstar space as Cam.
 function adjustSaturation(hex, saturation) {
 	if (saturation === 100) return hex;
 	const satF = (saturation - 100) / 100;
 	const hct = Hct.fromInt(argbFromHex(hex));
-	// 200 chroma target = max representable at this hue/tone.
 	const target = Hct.from(hct.hue, 200, hct.tone);
 	let chroma = hct.chroma;
 	chroma += satF > 0 ? (target.chroma - chroma) * satF : chroma * satF;
@@ -734,7 +644,6 @@ async function vote(request, env, ctx) {
 		return json({ error: "bad request" }, 400);
 	}
 
-	// Only real themes get rows, so votes can't be inflated for fake ids.
 	if (!(await themeExists(themeId, env))) {
 		return json({ error: "not found" }, 404);
 	}
@@ -743,13 +652,9 @@ async function vote(request, env, ctx) {
 		request.headers.get("cf-connecting-ip") ?? "unknown",
 	);
 
-	// Identity = device OR ip, so a VPN (new ip, same device) and device
-	// rotation (same ip, new device) both resolve to the existing vote.
 	const existing = await identityExists("votes", themeId, device, ip, env);
 
 	if (existing) {
-		// Can clear two rows (device match + ip match), so the counter moves
-		// by what the delete actually removed.
 		const deleted = await env.DB.prepare(
 			"DELETE FROM votes WHERE theme_id = ? AND (device = ? OR ip = ?)",
 		)
@@ -764,7 +669,6 @@ async function vote(request, env, ctx) {
 				.run();
 		}
 	} else {
-		// Batch = one transaction, so row and counter cannot drift apart.
 		await env.DB.batch([
 			env.DB.prepare(
 				"INSERT INTO votes (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
@@ -800,7 +704,6 @@ async function votesForDevice(url, env) {
 	return json({ themeIds: (rows.results ?? []).map((r) => r.theme_id) });
 }
 
-// One download per device per theme; re-applying the same theme is free.
 async function download(request, env, ctx) {
 	const body = await request.json().catch(() => null);
 	const themeId = body?.themeId;
@@ -809,7 +712,6 @@ async function download(request, env, ctx) {
 		return json({ error: "bad request" }, 400);
 	}
 
-	// Only real themes get rows, so downloads can't be inflated for fake ids.
 	if (!(await themeExists(themeId, env))) {
 		return json({ error: "not found" }, 404);
 	}
@@ -818,10 +720,8 @@ async function download(request, env, ctx) {
 		request.headers.get("cf-connecting-ip") ?? "unknown",
 	);
 
-	// One download per identity (device OR ip) per theme.
 	const existing = await identityExists("applies", themeId, device, ip, env);
 	if (!existing) {
-		// Batch = one transaction, so row and counter cannot drift apart.
 		await env.DB.batch([
 			env.DB.prepare(
 				"INSERT INTO applies (theme_id, device, ip, created) VALUES (?, ?, ?, ?)",
@@ -843,10 +743,6 @@ async function download(request, env, ctx) {
 	return json({ downloads: count?.c ?? 0 });
 }
 
-// Hottest endpoint by a wide margin: every client that refreshes its index
-// calls it. Served from the colo cache (one D1 read per TTL per colo) and
-// backed by theme_counts, so the read is one row per theme instead of a
-// scan of votes + applies.
 async function counts(request, env, ctx) {
 	const cache = caches.default;
 	const key = countsCacheKey(request);
@@ -879,15 +775,10 @@ function countsCacheKey(request) {
 	return new Request(url.toString(), { method: "GET" });
 }
 
-// Drop the cached counts in this colo after a write, so a voter sees their
-// own vote instead of waiting out the TTL.
 function purgeCounts(request, ctx) {
 	ctx?.waitUntil(caches.default.delete(countsCacheKey(request)));
 }
 
-// Two index seeks instead of `device = ? OR ip = ?`, which defeats both
-// indexes and reads every row of the theme. Table name is a literal from
-// the call sites, never user input.
 async function identityExists(table, themeId, device, ip, env) {
 	const byDevice = await env.DB.prepare(
 		`SELECT 1 FROM ${table} WHERE theme_id = ? AND device = ?`,
@@ -904,7 +795,6 @@ async function identityExists(table, themeId, device, ip, env) {
 	return Boolean(byIp);
 }
 
-// Strict server-side schema validation; mirrors the app's codec.
 function validatePayload(p) {
 	if (!p || typeof p !== "object" || Array.isArray(p)) return null;
 	if (p.schemaVersion !== 1) return null;
@@ -1007,7 +897,6 @@ function slugify(name) {
 async function upload(request, env) {
 	const body = await request.json().catch(() => null);
 
-	// Same salted SSAID hash as votes; raw identity never stored.
 	const device = body?.device;
 	if (!DEVICE_REGEX.test(device ?? ""))
 		return json({ error: "bad request" }, 400);
@@ -1040,7 +929,6 @@ async function upload(request, env) {
 	const payload = validatePayload(body?.payload);
 	if (!payload) return json({ error: "invalid theme" }, 400);
 
-	// Queue only — nothing reaches GitHub until /admin/approve.
 	const id = slugify(payload.name);
 	await env.DB.prepare(
 		"INSERT INTO pending (id, name, author, payload, device, created) VALUES (?, ?, ?, ?, ?, ?)",
@@ -1061,8 +949,6 @@ async function upload(request, env) {
 		.bind(device, ip, Date.now())
 		.run();
 
-	// uploads is a pure 24h rate-limit ledger; drop rows past the window so
-	// device/IP rotation spam can't grow the table without bound.
 	await env.DB.prepare("DELETE FROM uploads WHERE created < ?")
 		.bind(dayAgo)
 		.run();
@@ -1071,8 +957,6 @@ async function upload(request, env) {
 }
 
 const MAX_ADMIN_FAILURES_PER_HOUR = 5;
-// GitHub throttles bursts of writes to one repo; two approvals tapped
-// together collide here. Retry on the throttle instead of losing the PR.
 const GITHUB_MAX_RETRIES = 3;
 const GITHUB_MAX_BACKOFF_MS = 10000;
 
@@ -1084,7 +968,6 @@ async function hashIp(ip) {
 		.join("");
 }
 
-// Constant-time key comparison; equal length required by timingSafeEqual.
 function adminKeyMatches(candidate, secret) {
 	if (!candidate || !secret) return false;
 	const enc = new TextEncoder();
@@ -1094,10 +977,6 @@ function adminKeyMatches(candidate, secret) {
 	return crypto.subtle.timingSafeEqual(a, b);
 }
 
-// Owner-only queue review. Auth = x-admin-key header vs ADMIN_KEY secret
-// (generate with `openssl rand -hex 32`; never ships in the app or either
-// repo). Brute force is dead on arrival: 256-bit key space + 5 failed
-// attempts/hour/IP lockout + constant-time compare.
 async function admin(request, url, env, ctx) {
 	const ipHash = await hashIp(
 		request.headers.get("cf-connecting-ip") ?? "unknown",
@@ -1148,8 +1027,6 @@ async function admin(request, url, env, ctx) {
 		return json({ blocked: rows.results ?? [] });
 	}
 
-	// Block also drops every queued submission from that device. reason
-	// keeps the offender identifiable after the queue rows are gone.
 	if (request.method === "POST" && url.pathname === "/admin/block") {
 		const body = await request.json().catch(() => null);
 		const target = body?.device;
@@ -1186,9 +1063,6 @@ async function admin(request, url, env, ctx) {
 		if (!ID_REGEX.test(id ?? ""))
 			return json({ error: "bad request" }, 400);
 
-		// Optional admin rewrite of the submitted text. Same limits as
-		// /upload; the id keeps its original slug so approve stays
-		// idempotent (same branch, same PR) across retries.
 		const nameEdit =
 			body?.name === undefined ? null : clean(body.name, MAX_NAME);
 		const descriptionEdit =
@@ -1218,9 +1092,6 @@ async function admin(request, url, env, ctx) {
 			null,
 			2,
 		);
-		// waitUntil keeps this alive if the admin app disconnects mid-call —
-		// otherwise an aborted request strands a branch with no PR and the
-		// queue row survives, so the theme reappears in the review list.
 		const work = (async () => {
 			const prUrl = await openPullRequest(env, id, themeName, themeJson);
 			if (prUrl) {
@@ -1266,17 +1137,12 @@ async function verifyTurnstile(token, env) {
 	return result?.success === true;
 }
 
-// Every step tolerates its own output already being there, so a half-done
-// approve (branch made, PR not) finishes on the next try instead of dying
-// on a 422 "already exists". Same theme approved twice -> same PR url.
 async function openPullRequest(env, id, themeName, themeJson) {
 	const gh = (path, init) => githubFetch(env, path, init);
 	const branch = `theme/${id}`;
 	const path = `themes/${id}.json`;
 	const owner = env.GITHUB_REPO.split("/")[0];
 
-	// Already merged: nothing left to open, but the caller must still drop
-	// the queue row, so report success.
 	const merged = await gh(`/contents/${path}?ref=main`);
 	if (merged.ok) {
 		return `https://github.com/${env.GITHUB_REPO}/blob/main/${path}`;
@@ -1290,11 +1156,8 @@ async function openPullRequest(env, id, themeName, themeJson) {
 		method: "POST",
 		body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: baseSha }),
 	});
-	// 422 = ref exists from an earlier attempt; reuse it.
 	if (!created.ok && created.status !== 422) return null;
 
-	// Keep the earlier commit if there is one — rewriting it would only
-	// churn createdAt.
 	const existing = await gh(`/contents/${path}?ref=${branch}`);
 	if (!existing.ok) {
 		const file = await gh(`/contents/${path}`, {
@@ -1327,8 +1190,6 @@ async function openPullRequest(env, id, themeName, themeJson) {
 	return prBody?.html_url ?? null;
 }
 
-// Retries only the throttle responses (429, or 403 carrying rate-limit
-// headers) — a 403 from a bad token still fails fast.
 async function githubFetch(env, path, init = {}, attempt = 0) {
 	const response = await fetch(
 		`https://api.github.com/repos/${env.GITHUB_REPO}${path}`,

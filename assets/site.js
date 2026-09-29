@@ -1,5 +1,3 @@
-// Shared site logic: MCU-derived dynamic coloring (rotating seed), app-style
-// theme card swatches, marquee + grid rendering.
 import {
 	Hct,
 	SchemeContent,
@@ -18,7 +16,6 @@ import {
 const WORKER = "https://colorblendr-themes.drdisagree.workers.dev";
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
-// App enum ordinal -> MCU spec. JS lib has no 2026 yet; nearest is 2025.
 const SPEC_BY_VERSION = { 0: "2021", 1: "2025", 2: "2025" };
 const DEFAULT_SPEC = "2025";
 
@@ -48,9 +45,6 @@ const esc = (s) =>
 			})[c],
 	);
 
-// Counts of 1000+ collapse to 1K / 1.1K so a popular theme's stats stay inside
-// the card. Truncated, never rounded up, so the shown figure is never ahead of
-// the real one.
 const compact = (n) => {
 	const value = Number(n) || 0;
 	if (value < 1000) return String(value);
@@ -64,7 +58,6 @@ const alpha = (hex, a) =>
 		.toString(16)
 		.padStart(2, "0");
 
-// App CAM16 slider math ports (ColorUtil.adjustSaturation / shiftLightness).
 function adjustSaturation(hex, saturation) {
 	if (saturation === 100) return hex;
 	const satF = (saturation - 100) / 100;
@@ -75,12 +68,6 @@ function adjustSaturation(hex, saturation) {
 	return hexFromArgb(Hct.from(hct.hue, chroma, hct.tone).toInt());
 }
 
-// ---- Shade overrides --------------------------------------------------------
-
-// colorOverrides keys are Android palette resources, system_<row>_<step>.
-// Steps are fixed tonal stops; MCU roles land between them (dark surface is
-// tone 6, surfaceContainer 12), so overrides act as hue/chroma anchors and
-// the role keeps its own tone. Exact stops are used verbatim.
 const relLum = (hex) => {
 	const c = [1, 3, 5].map((i) => {
 		const v = parseInt(hex.slice(i, i + 2), 16) / 255;
@@ -106,10 +93,6 @@ function ensureContrast(fg, bg, min = 4.5) {
 	return out;
 }
 
-// Port of the app's palette pipeline (ColorSchemeUtil.generateColorPalette,
-// ColorModifiers.modifyColors, CommunityThemePalette.derive, DynamicColors).
-// Order matters: palette, then modifiers, then the theme's own hexes, then
-// pitch black. Roles read fixed indices out of the finished palette.
 const TONES = [100, 99, 95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0];
 const TINTS = TONES.map((t) => t / 100);
 const SHADES = [
@@ -136,7 +119,6 @@ const ROW_NAMES = [
 	"system_error",
 ];
 
-// [row, darkIndex, lightIndex, darkLightnessAdjustment, lightLightnessAdjustment]
 const ROLE_MAP = {
 	primary: [0, 4, 8],
 	primaryContainer: [0, 9, 3],
@@ -145,6 +127,8 @@ const ROLE_MAP = {
 	secondaryContainer: [1, 9, 3],
 	onSecondaryContainer: [1, 3, 11],
 	tertiary: [2, 4, 8],
+	tertiaryContainer: [2, 9, 3],
+	onTertiaryContainer: [2, 3, 11],
 	surface: [3, 11, 1, -25, -1],
 	onSurface: [3, 2, 10],
 	surfaceContainer: [3, 10, 2, -42, -2],
@@ -214,7 +198,6 @@ function buildPalette(seedHex, style, spec, dark, sliders, theme) {
 	rows.forEach((row, i) => {
 		const accent = i <= 2 || i === 5;
 		const neutral = i === 3 || i === 4;
-		// The app modifies shades 1..12; shade 0 is left alone.
 		for (let j = 1; j < row.length; j++) {
 			if (accent && accentSat !== 100 && !mono) {
 				row[j] = adjustSaturation(row[j], accentSat);
@@ -258,7 +241,6 @@ function roleReader(rows, dark) {
 	};
 }
 
-// Slider values for the active mode; the app ignores them for MONOCHROMATIC.
 function themeSliders(theme) {
 	if (!theme || theme.style === "MONOCHROMATIC") {
 		return { accentSat: 100, bgSat: 100, bgLight: 100 };
@@ -279,11 +261,7 @@ function themeSliders(theme) {
 	};
 }
 
-// ---- Color search -----------------------------------------------------------
-
-// Same family = hue within a window; wider would cross into other colors.
 const HUE_WINDOW = 30;
-// Below this chroma hue is meaningless; treat as neutral (gray/black/white).
 const NEUTRAL_CHROMA = 12;
 
 function parseColorQuery(query) {
@@ -301,10 +279,6 @@ function seedMatchesColor(seedHex, queryHex) {
 	return Math.min(d, 360 - d) <= HUE_WINDOW;
 }
 
-// ---- Site-wide dynamic coloring -------------------------------------------
-
-// Site follows the OS light/dark preference; MCU derives both variants
-// from the same seed. Mode flips re-render baked card HTML via handlers.
 const darkQuery = matchMedia("(prefers-color-scheme: dark)");
 let isDark = darkQuery.matches;
 const modeHandlers = [];
@@ -314,8 +288,6 @@ darkQuery.addEventListener("change", (e) => {
 	for (const handler of modeHandlers) handler();
 });
 
-// `theme` is the full catalog entry when a card drives the tint; without it
-// the site just renders the seed with library defaults (rotation, boot).
 function applySiteSeed(seedHex, theme) {
 	const rows = buildPalette(
 		seedHex,
@@ -338,12 +310,9 @@ function applySiteSeed(seedHex, theme) {
 
 	const accentBg = role("primary");
 	const tonalBg = role("primaryContainer");
+	const secBg = role("secondaryContainer");
+	const terBg = role("tertiaryContainer");
 
-	// Pitch black (and themes that override the neutral shades to #000) can
-	// flatten surface and every container role onto the same black, which
-	// erases the phone frame and the cards drawn on top of the page. Lift the
-	// containers to a tone floor above the surface so the elevation stays
-	// readable; themes with real separation already clear it untouched.
 	const surfaceBg = role("surface");
 	const surfaceTone = toneOf(surfaceBg);
 	const elevated = (name, floor) => {
@@ -359,26 +328,30 @@ function applySiteSeed(seedHex, theme) {
 		"--subtle": alpha(tint(role("onSurfaceVariant")), 0.9),
 		"--body2": tint(role("onSurfaceVariant")),
 		"--accent": accentBg,
-		// A theme is free to put red on red; a button still has to be read.
 		"--on-accent": ensureContrast(role("onPrimary"), accentBg),
 		"--tonal": tonalBg,
 		"--on-tonal": ensureContrast(role("onPrimaryContainer"), tonalBg),
+		"--sec-c": secBg,
+		"--on-sec-c": ensureContrast(role("onSecondaryContainer"), secBg),
+		"--ter-c": terBg,
+		"--on-ter-c": ensureContrast(role("onTertiaryContainer"), terBg),
 		"--card": elevated("surfaceContainer", 4),
 		"--card-high": elevated("surfaceContainerHigh", 7),
 		"--card-highest": elevated("surfaceBright", 11),
 		"--outline-v": role("outlineVariant"),
 		"--grad-c": role("tertiary"),
 	};
+	rows[0].forEach((hex, idx) => {
+		vars[`--ramp-${idx}`] = hex;
+	});
 	for (const [k, v] of Object.entries(vars)) {
 		document.documentElement.style.setProperty(k, v);
 	}
 
-	// Browser chrome follows the page surface.
 	document
 		.querySelector('meta[name="theme-color"]')
 		?.setAttribute("content", vars["--bg"]);
 
-	// Hero logo disc follows the seed (launcher gradient formula).
 	const stopColors = [rows[0][4], rows[0][8]];
 	const stops = document.querySelectorAll("#lg stop");
 	if (stops.length === 2) {
@@ -388,12 +361,51 @@ function applySiteSeed(seedHex, theme) {
 	return { vars, stops: stopColors };
 }
 
-// Boot color; matches the :root CSS fallbacks so first paint = first seed.
+const HOVER_TARGETS =
+	"a:hover, button:hover, input:hover, .mode:hover, .step:hover, .stat:hover, .ramp span:hover, .hero-phone:hover, .qa:hover";
+let recolorsInFlight = 0;
+let lastInteraction = 0;
+
+const INTERRUPTS = ["pointermove", "pointerdown", "wheel", "keydown", "touchstart"];
+
+for (const type of [...INTERRUPTS, "scroll"]) {
+	addEventListener(type, () => {
+		lastInteraction = performance.now();
+	}, { capture: true, passive: true });
+}
+
+function recolor(update) {
+	if (
+		!document.startViewTransition ||
+		REDUCED_MOTION.matches ||
+		performance.now() - lastInteraction < 2500 ||
+		document.querySelector(HOVER_TARGETS)
+	) {
+		update();
+		return;
+	}
+	const root = document.documentElement;
+	recolorsInFlight++;
+	root.classList.add("recoloring", "ambient-recolor");
+	const transition = document.startViewTransition(update);
+	const skip = () => transition.skipTransition();
+	for (const type of INTERRUPTS) {
+		addEventListener(type, skip, { capture: true, passive: true });
+	}
+	transition.finished.finally(() => {
+		for (const type of INTERRUPTS) {
+			removeEventListener(type, skip, { capture: true });
+		}
+	});
+	transition.finished.finally(() => {
+		if (--recolorsInFlight === 0) {
+			root.classList.remove("recoloring", "ambient-recolor");
+		}
+	});
+}
+
 const INITIAL_SEED = "#51BDFF";
 
-// Seed the site rests on when no card is hovered; rotation moves it.
-// Persisted per tab with its computed palette; an inline head script on
-// each page restores the vars pre-paint so navigation keeps the color.
 const savedTheme = (() => {
 	try {
 		return JSON.parse(sessionStorage.getItem("siteTheme"));
@@ -411,8 +423,6 @@ function persistTheme(applied) {
 	);
 }
 
-// Hue spread so the rotation tours the full wheel instead of hovering
-// around whatever hues the catalog happens to contain.
 const EXTRA_SEEDS = [
 	"#F44336",
 	"#FF7043",
@@ -428,7 +438,6 @@ const EXTRA_SEEDS = [
 	"#8D6E63",
 ];
 
-// Catalog seeds interleaved with the spread; CSS transitions animate it.
 function startSeedRotation(themes) {
 	const catalog = themes
 		.map((t) => t.seedColor)
@@ -446,17 +455,13 @@ function startSeedRotation(themes) {
 		if (hoverHold) return;
 		i = (i + 1) % seeds.length;
 		restingSeed = seeds[i];
-		persistTheme(applySiteSeed(restingSeed));
+		recolor(() => persistTheme(applySiteSeed(restingSeed)));
 	}, 7000);
 }
 
-// Hovered card retints the whole site with its seed; leave reverts.
-// --recolor shortens every themed transition while the hover drives it.
 function initHoverTheming(container, byId) {
 	if (!container || !matchMedia("(hover: hover)").matches) return;
-	const root = document.documentElement;
 	let activeId = null;
-	let clearTimer = null;
 	container.addEventListener("mouseover", (e) => {
 		const card = e.target.closest?.(".tcard");
 		const seed = card?.dataset.seed;
@@ -464,8 +469,6 @@ function initHoverTheming(container, byId) {
 		if (!seed || id === activeId) return;
 		activeId = id;
 		hoverHold = true;
-		if (clearTimer) clearTimeout(clearTimer);
-		root.style.setProperty("--recolor", ".5s");
 		applySiteSeed(seed, byId.get(id));
 	});
 	container.addEventListener("mouseout", (e) => {
@@ -475,18 +478,9 @@ function initHoverTheming(container, byId) {
 		activeId = null;
 		hoverHold = false;
 		applySiteSeed(restingSeed);
-		clearTimer = setTimeout(
-			() => root.style.removeProperty("--recolor"),
-			600,
-		);
 	});
 }
 
-// ---- Theme cards ------------------------------------------------------------
-
-// App ColorsScreen swatch: square = neutral2 tone30, top half = accent1
-// tone80, bottom-left = accent3 tone70, bottom-right = accent2 tone60,
-// center dot = seed. Overrides + sliders honored per cell.
 function cardData(theme) {
 	const seed = HEX.test(theme.seedColor ?? "") ? theme.seedColor : "#6750A4";
 	const rows = buildPalette(
@@ -507,7 +501,6 @@ function cardData(theme) {
 		secondQuarter: at(1, 60),
 		square: at(4, 30),
 		center: seed,
-		// Primary tonal run for the hover strip along the card's bottom edge.
 		strip: [95, 80, 70, 60, 40, 20].map((tone) => at(0, tone)),
 		container,
 		text: ensureContrast(role("onSurface"), container),
@@ -533,8 +526,6 @@ const downloadIcon =
 function cardHtml(theme) {
 	const c = cardData(theme);
 	const seed = HEX.test(theme.seedColor ?? "") ? theme.seedColor : "";
-	// Hover theming looks the entry up by id; colorOverrides are far too big
-	// to bake into a data attribute on every (repeated) card.
 	return `<a class="tcard" data-seed="${seed}" data-id="${esc(theme.id)}" style="background:${c.container};color:${c.text}" href="${WORKER}/theme/${esc(theme.id)}">
         ${swatchSvg(c)}
         <span class="tinfo">
@@ -548,8 +539,6 @@ function cardHtml(theme) {
         <span class="pstrip" aria-hidden="true">${c.strip.map((hex) => `<i style="background:${hex}"></i>`).join("")}</span>
     </a>`;
 }
-
-// ---- Data + sorting ----------------------------------------------------------
 
 const trendingScore = (t) => {
 	const days = Math.max(0, Date.now() / 1000 - (t.createdAt ?? 0)) / 86400;
@@ -571,7 +560,6 @@ async function loadThemes() {
 	return response.json();
 }
 
-// Count-up numbers when they scroll into view.
 const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)");
 
 function animateCount(el) {
@@ -606,80 +594,12 @@ function initCountUps(scope) {
 		.forEach((el) => observer.observe(el));
 }
 
-// Animated expand/collapse for FAQ details (native toggle snaps).
-function initFaq() {
-	const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-	document.querySelectorAll(".faq details").forEach((detail) => {
-		const summary = detail.querySelector("summary");
-		const answer = detail.querySelector(".answer");
-		let animation = null;
-
-		summary.addEventListener("click", (e) => {
-			e.preventDefault();
-			if (reduced) {
-				detail.open = !detail.open;
-				return;
-			}
-			animation?.cancel();
-			if (detail.open) {
-				// fill: forwards holds height at 0 until [open] drops,
-				// otherwise the last frame snaps back to full height.
-				// Padding animated too: border-box height 0 still renders
-				// the bottom padding, which snapped on [open] removal.
-				animation = answer.animate(
-					[
-						{
-							height: answer.offsetHeight + "px",
-							paddingBottom: "20px",
-							opacity: 1,
-						},
-						{ height: "0px", paddingBottom: "0px", opacity: 0 },
-					],
-					{
-						duration: 250,
-						easing: "cubic-bezier(.2,.7,.2,1)",
-						fill: "forwards",
-					},
-				);
-				animation.onfinish = () => {
-					detail.open = false;
-					animation.cancel();
-					animation = null;
-				};
-			} else {
-				detail.open = true;
-				animation = answer.animate(
-					[
-						{ height: "0px", paddingBottom: "0px", opacity: 0 },
-						{
-							height: answer.scrollHeight + "px",
-							paddingBottom: "20px",
-							opacity: 1,
-						},
-					],
-					{ duration: 300, easing: "cubic-bezier(.2,.7,.2,1)" },
-				);
-				animation.onfinish = () => {
-					animation = null;
-				};
-			}
-		});
-	});
-}
-
-// ---- Page entry points -------------------------------------------------------
-
 export async function initHome() {
 	persistTheme(applySiteSeed(restingSeed));
-	initFaq();
 	try {
 		const themes = await loadThemes();
 		startSeedRotation(themes);
 		const top = [...themes].sort(SORTS.trending).slice(0, 10);
-		// Loop = two identical halves shifted -50%; each half must cover the
-		// viewport or blank space drifts in before the wrap. Rebuilt when the
-		// viewport outgrows the built halves (maximize, zoom out) and when the
-		// light/dark mode flips (card colors are baked into the HTML).
 		const setWidth = top.length * 296;
 		let builtPerHalf = 0;
 		const buildRail = (force) => {
@@ -697,7 +617,6 @@ export async function initHome() {
 				.join("");
 			const half = set.repeat(perHalf);
 			const halfReversed = setReversed.repeat(perHalf);
-			// Second row: mobile only, reversed list, opposite drift.
 			document.getElementById("rail").innerHTML =
 				`<div class="marquee-track">${half}${half}</div>` +
 				`<div class="marquee-track track2">${halfReversed}${halfReversed}</div>`;
@@ -710,7 +629,6 @@ export async function initHome() {
 			new Map(themes.map((t) => [t.id, t])),
 		);
 
-		// Catalog totals under the rail, counting up on reveal.
 		const stats = document.getElementById("stats");
 		if (stats) {
 			const sum = (key) =>
@@ -787,7 +705,6 @@ export async function initAllThemes() {
 			nextBtn.disabled = page === pages;
 		}
 
-		// Grid itself is too noisy to make live; announce the count instead.
 		const status = document.getElementById("gridStatus");
 		if (status) {
 			status.textContent = list.length
@@ -813,8 +730,6 @@ export async function initAllThemes() {
 	search.addEventListener("input", renderFromFirstPage);
 	modeHandlers.push(render);
 
-	// Themed hue wheel popover fills the search box with a hex; render()
-	// detects it. Native color dialog can't be styled.
 	const colorBtn = document.getElementById("searchColorBtn");
 	const colorPop = document.getElementById("colorPop");
 	const hueWrap = colorPop?.querySelector(".huewrap");
@@ -825,7 +740,6 @@ export async function initAllThemes() {
 	const hueNeutral = document.getElementById("hueNeutral");
 	if (colorBtn && colorPop) {
 		let hue = 205;
-		// HSL hue -> hex so the thumb position matches the wheel color.
 		const hueToHex = (h) => {
 			const f = (n) => {
 				const k = (n + h / 30) % 12;
@@ -838,9 +752,8 @@ export async function initAllThemes() {
 			return ("#" + f(0) + f(8) + f(4)).toUpperCase();
 		};
 		const positionThumb = () => {
-			// Ring midline; hue 0 at 12 o'clock, clockwise like the gradient.
 			const rad = (hue * Math.PI) / 180;
-			const r = 42; // % of wrap size
+			const r = 42;
 			hueThumb.style.left = 50 + r * Math.sin(rad) + "%";
 			hueThumb.style.top = 50 - r * Math.cos(rad) + "%";
 			hueThumb.style.background = hueToHex(hue);
@@ -903,7 +816,6 @@ export async function initAllThemes() {
 		positionThumb();
 	}
 
-	// Custom sort menu: native select popups ignore theming.
 	const menuwrap = document.querySelector(".menuwrap");
 	const sortBtn = document.getElementById("sortBtn");
 	const sortMenu = document.getElementById("sortMenu");
