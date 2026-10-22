@@ -1,6 +1,7 @@
 // Validates every themes/*.json against the schema. Fails CI on any error.
 import { readdirSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
+import { ENGINE_KEY, V2_KEYS, schemaErrors } from "./theme-schema.mjs";
 
 const ID_REGEX = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -18,7 +19,7 @@ const ALLOWED_KEYS = new Set(["schemaVersion", "id", "name", "description",
     "accentSaturation", "backgroundSaturation", "backgroundLightness",
     "accurateShades", "pitchBlack", "tintText", "colorSpecVersion",
     "modeSpecificThemes", "accentSaturationLight", "backgroundSaturationLight",
-    "backgroundLightnessLight", "colorOverrides", "createdAt"]);
+    "backgroundLightnessLight", "colorOverrides", "createdAt", ENGINE_KEY, ...V2_KEYS]);
 
 const errors = [];
 const seenIds = new Set();
@@ -32,14 +33,13 @@ for (const file of readdirSync("themes").filter((f) => f.endsWith(".json"))) {
     let theme;
     try {
         const raw = readFileSync(path, "utf8");
-        check(path, raw.length <= 8 * 1024, "payload exceeds 8KB");
         theme = JSON.parse(raw);
+        for (const error of schemaErrors(theme, Buffer.byteLength(raw))) errors.push(`${path}: ${error}`);
     } catch (e) {
         errors.push(`${path}: invalid JSON (${e.message})`);
         continue;
     }
 
-    check(path, theme.schemaVersion === 1, "schemaVersion must be 1");
     check(path, ID_REGEX.test(theme.id ?? ""), "invalid id");
     check(path, theme.id === basename(file, ".json"), "id must match filename");
     check(path, !seenIds.has(theme.id), "duplicate id");

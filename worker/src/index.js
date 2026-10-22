@@ -1,33 +1,9 @@
-import {
-	Hct,
-	SchemeContent,
-	SchemeExpressive,
-	SchemeFidelity,
-	SchemeFruitSalad,
-	SchemeMonochrome,
-	SchemeNeutral,
-	SchemeRainbow,
-	SchemeTonalSpot,
-	SchemeVibrant,
-	argbFromHex,
-	hexFromArgb,
-} from "@material/material-color-utilities";
+import { createRenderer } from "../../assets/engine/render.js";
+import * as mcu from "../../assets/vendor/mcu.js";
+import { ENGINE_KEY, V2_KEYS, schemaErrors } from "../../scripts/theme-schema.mjs";
 
-const SCHEME_BY_STYLE = {
-	MONOCHROMATIC: SchemeMonochrome,
-	TONAL_SPOT: SchemeTonalSpot,
-	VIBRANT: SchemeVibrant,
-	RAINBOW: SchemeRainbow,
-	EXPRESSIVE: SchemeExpressive,
-	FIDELITY: SchemeFidelity,
-	CONTENT: SchemeContent,
-	FRUIT_SALAD: SchemeFruitSalad,
-	SPRITZ: SchemeNeutral,
-	CMF: SchemeTonalSpot,
-};
-
-const SPEC_BY_VERSION = { 0: "2021", 1: "2025", 2: "2025" };
-const DEFAULT_SPEC = "2025";
+const { Hct, argbFromHex, hexFromArgb } = mcu;
+const renderer = createRenderer(mcu);
 
 const ID_REGEX = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const DEVICE_REGEX = /^[a-f0-9]{64}$/;
@@ -102,7 +78,6 @@ function ensureContrast(fg, bg, min = 4.5) {
 }
 
 const TONES = [100, 99, 95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0];
-const TINTS = TONES.map((t) => t / 100);
 const SHADES = [
 	"0",
 	"10",
@@ -118,32 +93,6 @@ const SHADES = [
 	"900",
 	"1000",
 ];
-const ROW_NAMES = [
-	"system_accent1",
-	"system_accent2",
-	"system_accent3",
-	"system_neutral1",
-	"system_neutral2",
-	"system_error",
-];
-
-const ROLE_MAP = {
-	primary: [0, 4, 8],
-	primaryContainer: [0, 9, 3],
-	onPrimaryContainer: [0, 3, 11],
-	onPrimary: [0, 10, 0],
-	secondaryContainer: [1, 9, 3],
-	onSecondaryContainer: [1, 3, 11],
-	tertiary: [2, 4, 8],
-	surface: [3, 11, 1, -25, -1],
-	onSurface: [3, 2, 10],
-	surfaceContainer: [3, 10, 2, -42, -2],
-	surfaceContainerHigh: [3, 10, 1, null, -4],
-	surfaceContainerHighest: [3, 10, 1, 3, -5],
-	surfaceBright: [3, 10, 1, 13, -2],
-	onSurfaceVariant: [4, 2, 10],
-	outlineVariant: [4, 9, 4],
-};
 
 function toneOf(hex) {
 	return Hct.fromInt(argbFromHex(hex)).tone;
@@ -154,117 +103,6 @@ function atTone(hex, tone) {
 	return hexFromArgb(
 		Hct.from(h.hue, h.chroma, Math.max(0, Math.min(100, tone))).toInt(),
 	);
-}
-
-function shiftLightness(hex, lightness, idx) {
-	let f = (lightness - 100) / 1000;
-	if (idx === 0 || idx === 12) f = 0;
-	else if (idx === 1) f /= 10;
-	else if (idx === 2) f /= 2;
-	return atTone(hex, 100 * (TINTS[idx] + f));
-}
-
-function adjustLightness(hex, percent) {
-	const tone = toneOf(hex);
-	const pct = Math.max(-100, Math.min(100, percent));
-	return atTone(hex, tone + tone * (pct / 100));
-}
-
-function buildRows(seedHex, style, spec, dark, sliders, theme) {
-	const Ctor = SCHEME_BY_STYLE[style] ?? SchemeTonalSpot;
-	const toneList = (palette) =>
-		TONES.map((t) => hexFromArgb(palette.tone(t)));
-	const scheme = new Ctor(Hct.fromInt(argbFromHex(seedHex)), dark, 0, spec);
-	const rows = [
-		scheme.primaryPalette,
-		scheme.secondaryPalette,
-		scheme.tertiaryPalette,
-		scheme.neutralPalette,
-		scheme.neutralVariantPalette,
-		scheme.errorPalette,
-	].map(toneList);
-
-	const ownPalette = (hex) =>
-		toneList(
-			new Ctor(Hct.fromInt(argbFromHex(hex)), dark, 0, spec)
-				.primaryPalette,
-		);
-	if (HEX_COLOR.test(theme?.secondaryColor ?? "")) {
-		rows[1] = ownPalette(theme.secondaryColor);
-	}
-	if (HEX_COLOR.test(theme?.tertiaryColor ?? "")) {
-		rows[2] = ownPalette(theme.tertiaryColor);
-	}
-
-	const { accentSat, bgSat, bgLight } = sliders;
-	const mono = style === "MONOCHROMATIC";
-	const rainbow = style === "RAINBOW";
-	const pitch = Boolean(theme?.pitchBlack);
-
-	rows.forEach((row, i) => {
-		const accent = i <= 2 || i === 5;
-		const neutral = i === 3 || i === 4;
-		for (let j = 1; j < row.length; j++) {
-			if (accent && accentSat !== 100 && !mono) {
-				row[j] = adjustSaturation(row[j], accentSat);
-			} else if (neutral) {
-				if (bgLight !== 100 && !mono) {
-					row[j] = shiftLightness(row[j], bgLight, j);
-				}
-				if (bgSat !== 100 && !mono && !rainbow) {
-					row[j] = adjustSaturation(row[j], bgSat);
-				}
-			}
-			if (mono) row[j] = shiftLightness(row[j], bgLight, j);
-		}
-		if (neutral && pitch) row[11] = "#000000";
-	});
-
-	for (const [name, hex] of Object.entries(theme?.colorOverrides ?? {})) {
-		if (!HEX_COLOR.test(hex)) continue;
-		const cut = name.lastIndexOf("_");
-		const row = ROW_NAMES.indexOf(name.slice(0, cut));
-		const idx = SHADES.indexOf(name.slice(cut + 1));
-		if (row >= 0 && idx >= 0) rows[row][idx] = hex;
-	}
-
-	if (pitch) {
-		for (const row of [3, 4]) {
-			rows[row][11] = "#000000";
-			rows[row][10] = atTone(rows[row][10], 8);
-		}
-	}
-
-	return rows;
-}
-
-function roleReader(rows, dark) {
-	return (name) => {
-		const [row, darkIdx, lightIdx, darkAdj, lightAdj] = ROLE_MAP[name];
-		const hex = rows[row][dark ? darkIdx : lightIdx];
-		const adj = dark ? darkAdj : lightAdj;
-		return adj == null ? hex : adjustLightness(hex, adj);
-	};
-}
-
-function themeSliders(theme, isDark) {
-	if (!theme || theme.style === "MONOCHROMATIC") {
-		return { accentSat: 100, bgSat: 100, bgLight: 100 };
-	}
-	const light = !isDark && theme.modeSpecificThemes;
-	return {
-		accentSat:
-			(light ? theme.accentSaturationLight : theme.accentSaturation) ??
-			100,
-		bgSat:
-			(light
-				? theme.backgroundSaturationLight
-				: theme.backgroundSaturation) ?? 100,
-		bgLight:
-			(light
-				? theme.backgroundLightnessLight
-				: theme.backgroundLightness) ?? 100,
-	};
 }
 
 export default {
@@ -430,28 +268,16 @@ async function themePage(url, env, ctx) {
 	const seed = HEX_COLOR.test(theme.seedColor ?? "")
 		? theme.seedColor
 		: "#4285F4";
-	const SchemeCtor = SCHEME_BY_STYLE[theme.style] ?? SchemeTonalSpot;
 	const alpha = (hex, a) =>
 		hex +
 		Math.round(a * 255)
 			.toString(16)
 			.padStart(2, "0");
-	const isMono = theme.style === "MONOCHROMATIC";
-
-	const spec = SPEC_BY_VERSION[theme.colorSpecVersion] ?? DEFAULT_SPEC;
 
 	const GALLERY = "https://mahmud0808.github.io/ColorBlendr-Themes/";
 
 	const buildPalette = (isDark) => {
-		const rows = buildRows(
-			seed,
-			theme.style ?? "TONAL_SPOT",
-			spec,
-			isDark,
-			themeSliders(theme, isDark),
-			theme,
-		);
-		const role = roleReader(rows, isDark);
+		const { rows, role } = renderer.render(theme, isDark, seed);
 		const at = (row, tone) => rows[row][TONES.indexOf(tone)];
 
 		const accent = role("primary");
@@ -617,16 +443,6 @@ h1{margin:0 0 18px;font-size:clamp(48px,7.6vw,108px);font-weight:780;letter-spac
 	});
 	if (!local) ctx?.waitUntil(cache.put(cacheKey, response.clone()));
 	return response;
-}
-
-function adjustSaturation(hex, saturation) {
-	if (saturation === 100) return hex;
-	const satF = (saturation - 100) / 100;
-	const hct = Hct.fromInt(argbFromHex(hex));
-	const target = Hct.from(hct.hue, 200, hct.tone);
-	let chroma = hct.chroma;
-	chroma += satF > 0 ? (target.chroma - chroma) * satF : chroma * satF;
-	return hexFromArgb(Hct.from(hct.hue, chroma, hct.tone).toInt());
 }
 
 function json(obj, status = 200) {
@@ -797,7 +613,7 @@ async function identityExists(table, themeId, device, ip, env) {
 
 function validatePayload(p) {
 	if (!p || typeof p !== "object" || Array.isArray(p)) return null;
-	if (p.schemaVersion !== 1) return null;
+	if (schemaErrors(p, new TextEncoder().encode(JSON.stringify(p)).length).length > 0) return null;
 
 	const name = clean(p.name, MAX_NAME);
 	if (!name) return null;
@@ -858,6 +674,8 @@ function validatePayload(p) {
 		"backgroundSaturationLight",
 		"backgroundLightnessLight",
 		"colorOverrides",
+		ENGINE_KEY,
+		...V2_KEYS,
 	];
 	for (const key of Object.keys(p)) {
 		if (!allowed.includes(key)) return null;

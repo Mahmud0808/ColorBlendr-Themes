@@ -8,7 +8,31 @@ Themes are pure data (colors and Material You settings) — nothing executable.
   vote and download counts baked in daily
 - `worker/` — Cloudflare Worker handling votes, in-app uploads
   (queued for owner approval), and the admin review endpoints
-- `scripts/` — CI validation and index builder
+- `scripts/` — CI validation (`theme-schema.mjs` is shared with the worker),
+  index builder and the MCU bundler
+- `assets/engine/` — theme renderer shared by the site and the worker share
+  page: a port of the app's theme engine plus the legacy renderer
+- `assets/vendor/mcu.js` — material-color-utilities bundled from upstream
+
+## Schema versions
+
+- **v1** — what every released app reads. Existing themes stay v1 forever.
+- **v2** — adds `tokenOverrides` (`{light, dark}`: token name → shade link
+  like `system_accent1_600` / `system_accent1_600@1F`, or `#AARRGGBB`) and
+  `pitchBlackContainers`. A theme is v2 only when it uses one of these fields;
+  apps older than the token engine skip v2 themes instead of mis-rendering them.
+- `engineVersion: 2` (allowed on v1 too; old apps ignore it) marks themes made
+  with the token engine. v1 themes with shade overrides and no marker render with
+  the legacy mapping (app and web), so they look the way their authors made them.
+
+## Updating material-color-utilities
+
+The site and worker use the same MCU revision as the app's
+`materialcolorutilities/upstream` submodule:
+
+```
+node scripts/build-mcu.mjs <path-to-material-color-utilities-checkout>
+```
 
 ## Submitting a theme
 
