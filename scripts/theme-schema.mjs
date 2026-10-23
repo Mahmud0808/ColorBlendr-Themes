@@ -17,6 +17,29 @@ const SHADE_LINK =
 const ARGB_COLOR = /^#[0-9A-Fa-f]{8}$/;
 const MAX_TOKEN_OVERRIDES = 400;
 
+export const NAME_LENGTH = { min: 4, max: 24 };
+export const DESCRIPTION_LENGTH = { min: 12, max: 300 };
+const NAME_CHARS = /^[\p{L}\p{N}][\p{L}\p{N} '&()+.,!:#/_-]*$/u;
+const WORD = /\p{L}{2,}/u;
+
+export function uploadTextErrors(name, description) {
+    const errors = [];
+    if (name.length < NAME_LENGTH.min || name.length > NAME_LENGTH.max) {
+        errors.push(`name must be ${NAME_LENGTH.min}-${NAME_LENGTH.max} chars`);
+    }
+    if (!NAME_CHARS.test(name)) errors.push("name has unsupported characters");
+    if (new Set(name.toLowerCase().match(/\p{L}/gu) ?? []).size < 3) {
+        errors.push("name needs at least 3 different letters");
+    }
+    if (description.length < DESCRIPTION_LENGTH.min || description.length > DESCRIPTION_LENGTH.max) {
+        errors.push(`description must be ${DESCRIPTION_LENGTH.min}-${DESCRIPTION_LENGTH.max} chars`);
+    }
+    if (description.split(/\s+/).filter((word) => WORD.test(word)).length < 3) {
+        errors.push("description needs at least 3 words");
+    }
+    return errors;
+}
+
 const isObject = (value) => value != null && typeof value === "object" && !Array.isArray(value);
 
 export function schemaErrors(theme, byteLength) {

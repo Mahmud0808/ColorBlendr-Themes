@@ -1,6 +1,6 @@
 import { createRenderer } from "../../assets/engine/render.js";
 import * as mcu from "../../assets/vendor/mcu.js";
-import { ENGINE_KEY, V2_KEYS, schemaErrors } from "../../scripts/theme-schema.mjs";
+import { ENGINE_KEY, V2_KEYS, schemaErrors, uploadTextErrors } from "../../scripts/theme-schema.mjs";
 
 const { Hct, argbFromHex, hexFromArgb } = mcu;
 const renderer = createRenderer(mcu);
@@ -615,10 +615,11 @@ function validatePayload(p) {
 	if (!p || typeof p !== "object" || Array.isArray(p)) return null;
 	if (schemaErrors(p, new TextEncoder().encode(JSON.stringify(p)).length).length > 0) return null;
 
-	const name = clean(p.name, MAX_NAME);
+	const name = clean(p.name, MAX_NAME)?.replace(/\s+/g, " ");
 	if (!name) return null;
 	const description = cleanMultiline(p.description ?? "", MAX_DESCRIPTION);
 	if (!description) return null;
+	if (uploadTextErrors(name, description).length > 0) return null;
 	const author = clean(p.author ?? "", MAX_NAME);
 
 	if (!MONET_STYLES.includes(p.style)) return null;
