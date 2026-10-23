@@ -19,11 +19,13 @@ const MAX_TOKEN_OVERRIDES = 400;
 
 export const NAME_LENGTH = { min: 4, max: 24 };
 export const DESCRIPTION_LENGTH = { min: 12, max: 300 };
+export const AUTHOR_MAX_LENGTH = 24;
 const NAME_CHARS = /^[\p{L}\p{N}][\p{L}\p{N} '&()+.,!:#/_-]*$/u;
 const WORD = /\p{L}{2,}/u;
 
-export function uploadTextErrors(name, description) {
+export function uploadTextErrors(name, description, author = "") {
     const errors = [];
+    if (author.length > AUTHOR_MAX_LENGTH) errors.push(`author must be at most ${AUTHOR_MAX_LENGTH} chars`);
     if (name.length < NAME_LENGTH.min || name.length > NAME_LENGTH.max) {
         errors.push(`name must be ${NAME_LENGTH.min}-${NAME_LENGTH.max} chars`);
     }

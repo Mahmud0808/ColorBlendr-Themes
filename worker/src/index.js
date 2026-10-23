@@ -619,8 +619,8 @@ function validatePayload(p) {
 	if (!name) return null;
 	const description = cleanMultiline(p.description ?? "", MAX_DESCRIPTION);
 	if (!description) return null;
-	if (uploadTextErrors(name, description).length > 0) return null;
-	const author = clean(p.author ?? "", MAX_NAME);
+	const author = clean(p.author ?? "", MAX_NAME) ?? "";
+	if (uploadTextErrors(name, description, author).length > 0) return null;
 
 	if (!MONET_STYLES.includes(p.style)) return null;
 	if (!HEX_COLOR.test(p.seedColor ?? "")) return null;
@@ -888,9 +888,12 @@ async function admin(request, url, env, ctx) {
 			body?.description === undefined
 				? null
 				: cleanMultiline(body.description, MAX_DESCRIPTION);
+		const authorEdit =
+			body?.author === undefined ? null : clean(body.author, MAX_NAME);
 		if (
 			(body?.name !== undefined && !nameEdit) ||
-			(body?.description !== undefined && !descriptionEdit)
+			(body?.description !== undefined && !descriptionEdit) ||
+			(body?.author !== undefined && authorEdit === null)
 		) {
 			return json({ error: "bad request" }, 400);
 		}
@@ -905,6 +908,7 @@ async function admin(request, url, env, ctx) {
 		const payload = JSON.parse(row.payload);
 		if (nameEdit) payload.name = nameEdit;
 		if (descriptionEdit) payload.description = descriptionEdit;
+		if (authorEdit !== null) payload.author = authorEdit;
 		const themeName = nameEdit ?? row.name;
 		const themeJson = JSON.stringify(
 			{ id, ...payload, createdAt: Math.floor(Date.now() / 1000) },
