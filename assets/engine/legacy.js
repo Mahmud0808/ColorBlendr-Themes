@@ -148,7 +148,6 @@ export function createLegacyRenderer(mcu) {
 		if (pitch) {
 			for (const row of [3, 4]) {
 				rows[row][11] = "#000000";
-				rows[row][10] = atTone(rows[row][10], 8);
 			}
 		}
 
