@@ -51,6 +51,7 @@ const VALID_SHADES = new Set(
 const COUNTS_CACHE_SECONDS = 600;
 const MAX_UPLOADS_PER_DAY = 3;
 const MAX_REPORTS_PER_DAY = 3;
+const REPORTS_TO_OPEN_ISSUE = 3;
 
 const relLum = (hex) => {
 	const c = [1, 3, 5].map((i) => {
@@ -184,9 +185,11 @@ async function report(request, env) {
 	)
 		.bind(themeId)
 		.first();
-	if ((count?.c ?? 0) === 1) {
+	if ((count?.c ?? 0) === REPORTS_TO_OPEN_ISSUE) {
 		try {
-			await openReportIssue(env, themeId);
+			if (!(await reportIssueExists(env, themeId))) {
+				await openReportIssue(env, themeId);
+			}
 		} catch {}
 	}
 
@@ -203,6 +206,25 @@ async function themeExists(id, env) {
 	return Array.isArray(index) && index.some((t) => t.id === id);
 }
 
+async function reportIssueExists(env, themeId) {
+	const query = encodeURIComponent(
+		`repo:${env.GITHUB_REPO} is:issue in:title "Report: ${themeId}"`,
+	);
+	const response = await fetch(
+		`https://api.github.com/search/issues?q=${query}&per_page=1`,
+		{
+			headers: {
+				authorization: `Bearer ${env.GITHUB_TOKEN}`,
+				accept: "application/vnd.github+json",
+				"user-agent": "colorblendr-themes-worker",
+			},
+		},
+	);
+	if (!response.ok) return false;
+	const result = await response.json().catch(() => null);
+	return (result?.total_count ?? 0) > 0;
+}
+
 async function openReportIssue(env, themeId) {
 	await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/issues`, {
 		method: "POST",
@@ -214,7 +236,7 @@ async function openReportIssue(env, themeId) {
 		body: JSON.stringify({
 			title: `Report: ${themeId}`,
 			body: [
-				`A user reported the theme \`${themeId}\`.`,
+				`${REPORTS_TO_OPEN_ISSUE} users reported the theme \`${themeId}\`.`,
 				"",
 				`File: https://github.com/${env.GITHUB_REPO}/blob/main/themes/${themeId}.json`,
 				"",

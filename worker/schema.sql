@@ -62,7 +62,7 @@ WHERE true
 ON CONFLICT(theme_id) DO UPDATE
     SET votes = excluded.votes, applies = excluded.applies;
 
--- One report per device/ip per theme; first report opens a GitHub issue.
+-- One report per device/ip per theme; the third report opens a GitHub issue.
 CREATE TABLE IF NOT EXISTS reports (
     theme_id TEXT NOT NULL,
     device TEXT NOT NULL,
