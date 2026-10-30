@@ -1,0 +1,17 @@
+{
+  "id": "green-scale-x611rr",
+  "schemaVersion": 1,
+  "name": "Green Scale",
+  "description": "A custom-balanced green color selection going through match One UI color implementation.",
+  "author": "BonhX",
+  "style": "CONTENT",
+  "seedColor": "#18463C",
+  "accentSaturation": 100,
+  "backgroundSaturation": 0,
+  "backgroundLightness": 0,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": true,
+  "tintText": true,
+  "createdAt": 1793370998
+}
