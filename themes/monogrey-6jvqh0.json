@@ -1,0 +1,17 @@
+{
+  "id": "monogrey-6jvqh0",
+  "schemaVersion": 1,
+  "name": "MonoGrey",
+  "description": "A grey tone color instead of AMOLED Black and White colors.",
+  "author": "Dextrecs",
+  "style": "SPRITZ",
+  "seedColor": "#211C23",
+  "accentSaturation": 0,
+  "backgroundSaturation": 40,
+  "backgroundLightness": 25,
+  "accurateShades": false,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "createdAt": 1793370765
+}
