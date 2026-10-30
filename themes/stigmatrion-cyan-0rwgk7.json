@@ -1,0 +1,21 @@
+{
+  "id": "stigmatrion-cyan-0rwgk7",
+  "schemaVersion": 1,
+  "name": "Stigmatrion Cyan",
+  "description": "Based on Stigmatrion's signature color",
+  "author": "",
+  "style": "CMF",
+  "seedColor": "#00BEA0",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 100,
+  "backgroundSaturationLight": 100,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": true,
+  "tintText": true,
+  "createdAt": 1793370975
+}
