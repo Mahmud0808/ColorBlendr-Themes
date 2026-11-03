@@ -1,0 +1,18 @@
+{
+  "id": "orange-on-black-a495k0",
+  "schemaVersion": 1,
+  "name": "Orange on Black",
+  "description": "Orange accent on black background.",
+  "author": "juPzHqLBa",
+  "style": "TONAL_SPOT",
+  "seedColor": "#E34621",
+  "accentSaturation": 200,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 0,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "engineVersion": 2,
+  "createdAt": 1793695657
+}
