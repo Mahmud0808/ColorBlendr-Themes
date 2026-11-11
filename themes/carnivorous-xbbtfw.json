@@ -1,0 +1,20 @@
+{
+  "id": "carnivorous-xbbtfw",
+  "schemaVersion": 1,
+  "name": "Carnivorous",
+  "description": "Natural floral colors",
+  "author": "Alessi_io",
+  "style": "EXPRESSIVE",
+  "seedColor": "#5179A9",
+  "secondaryColor": "#DEC168",
+  "tertiaryColor": "#F64D14",
+  "accentSaturation": 100,
+  "backgroundSaturation": 100,
+  "backgroundLightness": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "engineVersion": 2,
+  "createdAt": 1794403139
+}
