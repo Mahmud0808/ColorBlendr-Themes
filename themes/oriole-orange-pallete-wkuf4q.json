@@ -1,0 +1,24 @@
+{
+  "id": "oriole-orange-pallete-wkuf4q",
+  "schemaVersion": 2,
+  "name": "Oriole orange pallete",
+  "description": "Theme based on the iconic Pixel 6, the name of the flower is Pincushion Protea, specifically \"Leucospermum\", wallpaper author: Andrew Zuckerman, Those wallpapers are part of the \"Bloom collection\"",
+  "author": "",
+  "style": "CMF",
+  "seedColor": "#FF9D00",
+  "accentSaturation": 200,
+  "backgroundSaturation": 200,
+  "backgroundLightness": 1,
+  "accurateShades": true,
+  "colorSpecVersion": 2,
+  "pitchBlack": false,
+  "tintText": true,
+  "tokenOverrides": {
+    "light": {
+      "error_container": "#FF3E5500"
+    },
+    "dark": {}
+  },
+  "engineVersion": 2,
+  "createdAt": 1794659062
+}
