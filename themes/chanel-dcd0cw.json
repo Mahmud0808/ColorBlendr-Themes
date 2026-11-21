@@ -1,0 +1,22 @@
+{
+  "id": "chanel-dcd0cw",
+  "schemaVersion": 1,
+  "name": "Chanel",
+  "description": "black red green",
+  "author": "Xinxeta",
+  "style": "VIBRANT",
+  "seedColor": "#6B8582",
+  "accentSaturation": 113,
+  "backgroundSaturation": 41,
+  "backgroundLightness": 108,
+  "modeSpecificThemes": true,
+  "accentSaturationLight": 100,
+  "backgroundSaturationLight": 100,
+  "backgroundLightnessLight": 100,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": true,
+  "tintText": true,
+  "engineVersion": 2,
+  "createdAt": 1795268929
+}
