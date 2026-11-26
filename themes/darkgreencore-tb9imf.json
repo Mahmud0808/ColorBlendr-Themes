@@ -1,0 +1,32 @@
+{
+  "id": "darkgreencore-tb9imf",
+  "schemaVersion": 2,
+  "name": "darkgreencore",
+  "description": "darkgreen background limepallete and darksoft green secondary",
+  "author": "rexpro_27",
+  "style": "TONAL_SPOT",
+  "seedColor": "#001810",
+  "secondaryColor": "#E0D7A1",
+  "tertiaryColor": "#BCDCB2",
+  "accentSaturation": 84,
+  "backgroundSaturation": 138,
+  "backgroundLightness": 63,
+  "accurateShades": true,
+  "colorSpecVersion": 0,
+  "pitchBlack": false,
+  "tintText": true,
+  "colorOverrides": {
+    "system_accent1_700": "#00390D",
+    "system_accent1_900": "#001E10",
+    "system_accent3_900": "#0E2104"
+  },
+  "tokenOverrides": {
+    "light": {},
+    "dark": {
+      "on_background": "#FFDAD999",
+      "on_surface": "#FFECEBA6"
+    }
+  },
+  "engineVersion": 2,
+  "createdAt": 1795703774
+}
